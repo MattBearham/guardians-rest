@@ -172,6 +172,13 @@ section[hidden] { display: none !important; }
 .pill.built { color: var(--kelp); }
 .pill.avail { color: var(--sea); }
 .pill.locked { color: var(--muted); }
+.pill.vote { color: var(--accent); }
+.imp.ballot { border-color: var(--sea); box-shadow: inset 4px 0 0 var(--sea); }
+.imp.ballot.mine { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.tokens { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 8px; }
+.token { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 400 14px/1 var(--f-display); background: var(--sea); color: var(--card); }
+.token.mine { background: var(--accent); color: var(--accent-ink); }
+.token-status { margin: 8px 0 0; color: var(--muted); }
 .ladder { margin-top: 26px; }
 .ladder summary { cursor: pointer; font: 700 14px var(--f-label); letter-spacing: .06em; color: var(--muted); }
 .ladder ol { margin: 10px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; font-variant-numeric: tabular-nums; }
@@ -344,12 +351,14 @@ body.gm .gm-only.flexy { display: flex; }
       ["name", "Name", "text"], ["kind", "Kind of place", "text"], ["order", "Order", "number"],
       ["summary", "What the party knows", "area"]] }
   };
-  var state = { quests: [], people: [], places: [], notes: [], improvements: [], guild: [], picks: [] };
+  var state = { quests: [], people: [], places: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
   var members = [];
-  var loaded = { quests: false, people: false, places: false, notes: false, improvements: false, guild: false, picks: false, members: false };
+  var loaded = { quests: false, people: false, places: false, notes: false, improvements: false, guild: false, picks: false, members: false, ballot: false };
+  var ballotError = false;
   var COLLECTIONS = ["quests", "people", "places", "notes", "improvements", "guild", "picks"];
   var confirming = null, pickProfiles = {};
   var db = null, sb = null, myId = null, isOwner = false, gm = false;
+  var epoch = 0; // bumped on log-out so replies from the old session are ignored
   var editing = { quests: null, people: null, places: null };
   var pinFor = null, activePlace = null;
 
@@ -650,7 +659,7 @@ body.gm .gm-only.flexy { display: flex; }
   }
   function renderGuild() {
     var box = $("guild-body"); box.textContent = "";
-    if (!loaded.quests || !loaded.improvements || !loaded.guild || !loaded.picks) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    if (!loaded.quests || !loaded.improvements || !loaded.guild || !loaded.picks || !loaded.ballot) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
     var xp = guildXp(), level = levelFor(xp), max = level >= LEVELS.length;
     var floor = LEVELS[level - 1], next = max ? floor : LEVELS[level];
     var pct = max ? 100 : Math.max(0, Math.min(100, Math.round((xp - floor) / (next - floor) * 100)));
@@ -669,24 +678,41 @@ body.gm .gm-only.flexy { display: flex; }
     var imps = state.improvements.slice().sort(function (a, b) { return (a.d.minLevel || 0) - (b.d.minLevel || 0) || String(a.d.name).localeCompare(String(b.d.name)); });
     var picks = state.picks.filter(function (pk) { return pk.d.improvement; });
     var pickOf = {}; picks.forEach(function (pk) { pickOf[pk.d.improvement] = pk; });
-    var filled = {}; picks.forEach(function (pk) { filled[pk.id] = true; });
-    var openSlot = 0; for (var lv = 2; lv <= level; lv++) { if (!filled["level-" + lv]) { openSlot = lv; break; } }
-    var homeBuilt = imps.some(function (it) { return it.d.home && pickOf[it.id]; });
     var homePick = imps.filter(function (it) { return it.d.home && pickOf[it.id]; })[0];
+    var homeBuilt = !!homePick;
     var homeSite = homePick ? homePick.d.site : null;
     var SITE_NAMES = { beach: "beach", town: "town", grass: "grassland" };
     function siteOk(it) { var ss = it.d.sites; return !ss || !ss.length || !homeSite || ss.indexOf(homeSite) >= 0; }
     function sitesText(it) { return (it.d.sites || []).map(function (x) { return SITE_NAMES[x] || x; }).join(" or "); }
-    function choosable(it) {
-      if (!openSlot || pickOf[it.id]) return false;
-      if (!homeBuilt) return !!it.d.home;
-      return !it.d.home && level >= (it.d.minLevel || 1) && siteOk(it);
+
+    // The ballot comes from the database (ledger_ballot), so players and the GM see the same options.
+    var ballot = state.ballot, onBallot = {};
+    if (ballot) ballot.options.forEach(function (id) { onBallot[id] = true; });
+    var players = members.filter(function (m) { return m.role !== "gm"; });
+    var me = myProfile(), isPlayer = !!(me && me.role !== "gm");
+    var ballotVotes = ballot ? state.votes.filter(function (v) { return v.level === ballot.level; }) : [];
+    var myVote = ballotVotes.filter(function (v) { return v.user_id === myId; })[0] || null;
+    function impName(id) { var it = imps.filter(function (x) { return x.id === id; })[0]; return it ? it.d.name || "Improvement" : "an improvement"; }
+
+    if (ballotError && isOwner) {
+      box.appendChild(el("div", { cls: "levelup" }, [el("b", { text: "GM" }), document.createTextNode("Improvement voting isn't set up in the database yet. Run supabase/3-improvement-votes.sql in Supabase's SQL Editor.")]));
     }
-    var owed = 0; for (var lv2 = 2; lv2 <= level; lv2++) if (!filled["level-" + lv2]) owed++;
-    if (owed > 0) {
-      var msg = !homeBuilt ? "The guild has levelled up. Choose the guild's home: beach, town or grassland. They're equally good, but where you live decides which improvements you can build later."
-        : "The guild has levelled up and can choose " + (owed === 1 ? "a new improvement" : owed + " new improvements") + ". Talk it over, then choose one below.";
-      box.appendChild(el("div", { cls: "levelup" }, [el("b", { text: "LEVEL UP" }), document.createTextNode(msg)]));
+    if (ballot) {
+      var need = Math.floor(players.length / 2) + 1, msg;
+      if (!ballot.options.length) msg = "The guild has levelled up, but there's nothing new it can build yet. Ask the GM.";
+      else {
+        msg = (!homeBuilt ? "The guild has levelled up. Time to choose the guild's home: beach, town or grassland. They're equally good, but where you live decides which improvements you can build later. "
+          : "The guild has levelled up and can build something new. ")
+          + "Everyone has one token to place on the option they want. An option is built as soon as it holds " + need + " of the " + players.length + " tokens, or once every token is down and it's in the lead.";
+      }
+      var lu = el("div", { cls: "levelup" }, [el("b", { text: "LEVEL " + ballot.level }), document.createTextNode(msg)]);
+      if (ballot.options.length) {
+        lu.appendChild(el("p", { cls: "token-status" }, [
+          el("span", { text: ballotVotes.length + " of " + players.length + " tokens placed." }),
+          isPlayer ? el("span", { text: myVote ? " Your token is on " + impName(myVote.improvement) + "." : " Your token is still in your pocket." }) : null
+        ]));
+      }
+      box.appendChild(lu);
     }
 
     if (gm) {
@@ -702,36 +728,60 @@ body.gm .gm-only.flexy { display: flex; }
       ]));
     }
 
-    var pickerIds = picks.map(function (pk) { return pk.d.by; }).filter(Boolean);
+    function chosenBy(pk) {
+      if (pk.d.votes) {
+        var all = Object.keys(pk.d.votes), forIt = all.filter(function (k) { return pk.d.votes[k] === pk.d.improvement; });
+        return "CHOSEN BY VOTE · " + forIt.length + " OF " + all.length + " TOKENS";
+      }
+      if (pk.d.by) return "CHOSEN BY " + String(profileName(pk.d.by) || pickProfiles[pk.d.by] || (pk.d.by === myId ? "you" : "a party member")).toUpperCase();
+      return "";
+    }
+
+    function tokens(it) {
+      var on = ballotVotes.filter(function (v) { return v.improvement === it.id; });
+      var names = on.map(function (v) { return v.user_id === myId ? "you" : profileName(v.user_id) || "a party member"; });
+      var row = el("div", { cls: "tokens", "aria-label": on.length + (on.length === 1 ? " token" : " tokens") });
+      on.forEach(function (v, i) { row.appendChild(el("span", { cls: "token" + (v.user_id === myId ? " mine" : ""), title: names[i], "aria-hidden": "true", text: personInitial(profileName(v.user_id) || "?") })); });
+      row.appendChild(el("span", { text: on.length ? on.length + (on.length === 1 ? " token: " : " tokens: ") + names.join(", ") : "No tokens yet" }));
+      return row;
+    }
 
     function card(it) {
-      var d = it.d, pk = pickOf[it.id], can = choosable(it), unlocked = d.home || level >= (d.minLevel || 1);
+      var d = it.d, pk = pickOf[it.id], open = !!onBallot[it.id], unlocked = d.home || level >= (d.minLevel || 1);
+      var mine = !!(myVote && myVote.improvement === it.id);
       var pill = pk ? el("span", { cls: "pill built", text: "BUILT AT LEVEL " + String(pk.id).replace("level-", "") })
-        : can ? el("span", { cls: "pill avail", text: "CAN BE CHOSEN NOW" })
+        : open ? el("span", { cls: "pill vote", text: "ON THE BALLOT" })
         : d.home ? el("span", { cls: "pill locked", text: homeBuilt ? "NOT CHOSEN" : "FIRST LEVEL-UP" })
         : (homeSite && !siteOk(it)) ? el("span", { cls: "pill locked", text: "NEEDS A " + sitesText(it).toUpperCase() + " HOME" })
         : unlocked ? el("span", { cls: "pill avail", text: "UNLOCKED" }) : el("span", { cls: "pill locked", text: "UNLOCKS AT LEVEL " + d.minLevel });
       var blocked = !d.home && homeSite && !siteOk(it);
-      var c = el("article", { cls: "imp" + (pk ? " built" : (blocked || !(unlocked || can)) ? " locked" : "") }, [
+      var c = el("article", { cls: "imp" + (pk ? " built" : open ? (mine ? " ballot mine" : " ballot") : (blocked || !unlocked) ? " locked" : "") }, [
         pill, el("h3", { text: d.name || "Improvement" }),
         d.home && d.site ? el("div", { cls: "label", text: (SITE_NAMES[d.site] || d.site).toUpperCase() }) : null,
         !d.home && d.sites && d.sites.length ? el("div", { cls: "label", text: sitesText(it).toUpperCase() + " HOMES ONLY" }) : null,
         d.flavour ? el("p", { text: d.flavour }) : null,
         d.benefit ? el("p", { cls: "benefit" }, [el("b", { text: "BENEFIT" }), document.createTextNode(d.benefit)]) : null,
-        pk && pk.d.by ? el("p", { cls: "label", text: "CHOSEN BY " + String(profileName(pk.d.by) || pickProfiles[pk.d.by] || (pk.d.by === myId ? "you" : "a party member")).toUpperCase() }) : null
+        pk && chosenBy(pk) ? el("p", { cls: "label", text: chosenBy(pk) }) : null,
+        open ? tokens(it) : null
       ]);
-      if (can && db) {
+      if (open && isPlayer && sb) {
+        c.appendChild(el("div", { cls: "gm-bar" }, [mine
+          ? el("button", { cls: "btn small ghost", type: "button", text: "Take your token back", onclick: function () { vote(null, "Token taken back."); } })
+          : el("button", { cls: "btn small", type: "button", text: myVote ? "Move your token here" : "Place your token here", onclick: function () { vote(it.id, "Token placed on " + (d.name || "that") + "."); } })
+        ]));
+      }
+      if (open && gm && db) {
         if (confirming === it.id) {
           c.appendChild(el("div", { cls: "gm-bar" }, [
-            el("span", { text: "Build " + (d.name || "this") + " for level " + openSlot + "?" }),
+            el("span", { text: "Skip the vote and build " + (d.name || "this") + " for level " + ballot.level + "?" }),
             el("button", { cls: "btn small", type: "button", text: "Confirm", onclick: function () {
               confirming = null;
-              write(db.collection("picks").doc("level-" + openSlot).set({ improvement: it.id, by: myId || null, at: Date.now() }), "Chosen. The guild builds " + (d.name || "it") + ".");
+              write(db.collection("picks").doc("level-" + ballot.level).set({ improvement: it.id, by: myId || null, at: Date.now() }), "Chosen. The guild builds " + (d.name || "it") + ".");
             } }),
             el("button", { cls: "btn small ghost", type: "button", text: "Cancel", onclick: function () { confirming = null; renderGuild(); } })
           ]));
         } else {
-          c.appendChild(el("div", { cls: "gm-bar" }, [el("button", { cls: "btn small", type: "button", text: "Choose this", onclick: function () { confirming = it.id; renderGuild(); } })]));
+          c.appendChild(el("div", { cls: "gm-bar" }, [el("button", { cls: "btn small ghost", type: "button", text: "GM: choose for the party", onclick: function () { confirming = it.id; renderGuild(); } })]));
         }
       }
       if (gm && pk) c.appendChild(el("div", { cls: "gm-bar" }, [el("button", { cls: "btn small danger", type: "button", text: "Undo this choice", onclick: function () { write(db.collection("picks").doc(pk.id).delete(), "Choice undone."); } })]));
@@ -741,20 +791,41 @@ body.gm .gm-only.flexy { display: flex; }
     var homes = imps.filter(function (it) { return it.d.home; });
     var rest = imps.filter(function (it) { return !it.d.home; });
     var builtCount = picks.length;
-    box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode(homeBuilt ? "The guild's home " : "Choose the guild's home "), el("span", { cls: "label", text: "LEVEL 2" })]));
-    var hg = el("div", { cls: "improvements" });
-    (homeBuilt ? homes.filter(function (it) { return pickOf[it.id]; }) : homes).forEach(function (it) { hg.appendChild(card(it)); });
-    if (!homes.length) hg.appendChild(el("div", { cls: "empty", text: "No home options listed yet." }));
-    box.appendChild(hg);
+    function grid(list) { var g = el("div", { cls: "improvements" }); list.forEach(function (it) { g.appendChild(card(it)); }); return g; }
+    if (gm) {
+      // GM view: every improvement, with what's on the ballot marked.
+      box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode(homeBuilt ? "The guild's home " : "Choose the guild's home "), el("span", { cls: "label", text: "LEVEL 2" })]));
+      var hg = grid(homeBuilt ? [homePick] : homes);
+      if (!homes.length) hg.appendChild(el("div", { cls: "empty", text: "No home options listed yet." }));
+      box.appendChild(hg);
 
-    box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode("Improvements "), el("span", { cls: "label", text: builtCount + " BUILT · " + Math.max(0, level - 1) + " EARNED" })]));
-    var tiers = {}; rest.forEach(function (it) { var k = it.d.minLevel || 1; (tiers[k] = tiers[k] || []).push(it); });
-    Object.keys(tiers).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) {
-      box.appendChild(el("div", { cls: "label", text: "LEVEL " + k + " AND UP" }));
-      var grid = el("div", { cls: "improvements" }); grid.style.margin = "8px 0 18px";
-      tiers[k].forEach(function (it) { grid.appendChild(card(it)); });
-      box.appendChild(grid);
-    });
+      box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode("Improvements "), el("span", { cls: "label", text: builtCount + " BUILT · " + Math.max(0, level - 1) + " EARNED" })]));
+      var tiers = {}; rest.forEach(function (it) { var k = it.d.minLevel || 1; (tiers[k] = tiers[k] || []).push(it); });
+      Object.keys(tiers).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) {
+        box.appendChild(el("div", { cls: "label", text: "LEVEL " + k + " AND UP" }));
+        var tg = grid(tiers[k]); tg.style.margin = "8px 0 18px";
+        box.appendChild(tg);
+      });
+    } else {
+      // Player view: only what's on the ballot and what's been built.
+      var options = imps.filter(function (it) { return onBallot[it.id]; });
+      if (options.length) {
+        box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode(homeBuilt ? "On the ballot " : "Choose the guild's home "), el("span", { cls: "label", text: "LEVEL " + ballot.level })]));
+        box.appendChild(grid(options));
+      }
+      if (homeBuilt) {
+        box.appendChild(el("h2", { cls: "guild-h", text: "The guild's home" }));
+        box.appendChild(grid([homePick]));
+      }
+      var built = rest.filter(function (it) { return pickOf[it.id]; });
+      if (built.length) {
+        box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode("Improvements "), el("span", { cls: "label", text: built.length + " BUILT" })]));
+        box.appendChild(grid(built));
+      }
+      if (!options.length && !homeBuilt && !built.length) {
+        box.appendChild(el("div", { cls: "empty", text: "The guild hasn't built anything yet. When it levels up, the options appear here and everyone gets a token to vote with." }));
+      }
+    }
 
     var done = state.quests.filter(function (q) { return (q.d.status || "") === "completed" && Number(q.d.xp); }).sort(byOrder);
     if (done.length) {
@@ -798,7 +869,7 @@ body.gm .gm-only.flexy { display: flex; }
       who.appendChild(el("span", { cls: "mono", "aria-hidden": "true", text: personInitial(me.name || "?") }));
       who.appendChild(el("b", { text: me.name }));
       who.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Rename", onclick: function () { renaming = true; renderProfiles(); } }));
-      who.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Log out", onclick: function () { sb.auth.signOut().then(function () { location.reload(); }); } }));
+      who.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Log out", onclick: logOut }));
     }
     if (gm) {
       var rows = el("div", { cls: "slots" });
@@ -964,25 +1035,58 @@ body.gm .gm-only.flexy { display: flex; }
   }
   var pending = {};
   function refetch(c) {
+    var ep = epoch;
     return sb.from("docs").select("id,data").eq("collection", c).then(function (r) {
+      if (ep !== epoch) return;
       if (r.error) throw codeErr(r.error);
       state[c] = (r.data || []).map(function (x) { return { id: x.id, d: x.data || {} }; });
       loaded[c] = true;
       if (activePlace && c === "places" && !state.places.some(function (p) { return p.id === activePlace; })) activePlace = null;
+      // Levels and picks decide what's on the ballot, and so which improvements players can see.
+      if (c === "quests" || c === "guild" || c === "picks") { refetchSoon("improvements"); refetchSoon("ballot"); }
       render();
     });
   }
   function refetchSoon(c) {
     if (pending[c]) return;
-    pending[c] = setTimeout(function () { pending[c] = null; (c === "members" ? loadMembers() : refetch(c)).catch(function () {}); }, 150);
+    pending[c] = setTimeout(function () { pending[c] = null; if (!started) return; (c === "members" ? loadMembers() : c === "ballot" ? loadBallot() : refetch(c)).catch(function () {}); }, 150);
+  }
+  function loadBallot() {
+    var ep = epoch;
+    return Promise.all([sb.rpc("ledger_ballot"), sb.from("votes").select("level,user_id,improvement")]).then(function (rs) {
+      if (ep !== epoch) return;
+      var b = rs[0], v = rs[1];
+      ballotError = !!(b.error || v.error);
+      var rows = ballotError ? [] : b.data || [];
+      state.ballot = rows.length ? { level: rows[0].ballot_level, options: rows.map(function (r) { return r.option_id; }).filter(Boolean) } : null;
+      state.votes = ballotError ? [] : v.data || [];
+      loaded.ballot = true; render();
+    });
+  }
+  function vote(choice, okMsg) {
+    setStatus("Saving…");
+    return sb.rpc("ledger_vote", { choice: choice }).then(function (r) {
+      if (r.error) throw r.error;
+      var decided = r.data;
+      return Promise.all([loadBallot(), refetch("picks"), refetch("improvements")]).then(function () {
+        var it = decided && state.improvements.filter(function (x) { return x.id === decided; })[0];
+        var msg = decided ? "The vote is in. The guild builds " + (it ? it.d.name : "it") + "." : okMsg;
+        setStatus(msg); setTimeout(function () { if ($("status").textContent === msg) setStatus(""); }, 4000);
+      });
+    }).catch(function (e) {
+      setStatus(/no vote is open|not on the ballot/i.test((e && e.message) || "") ? "That vote has already closed." : "Your token didn't move. Try again in a moment.");
+      loadBallot().catch(function () {});
+    });
   }
   function loadMembers() {
+    var ep = epoch;
     return sb.from("members").select("user_id,username,name,role").then(function (r) {
+      if (ep !== epoch) return;
       if (r.error) throw codeErr(r.error);
       members = r.data || []; loaded.members = true; render();
     });
   }
-  function refreshAll() { return Promise.all([loadMembers()].concat(COLLECTIONS.map(refetch))); }
+  function refreshAll() { return Promise.all([loadMembers(), loadBallot()].concat(COLLECTIONS.map(refetch))); }
 
   /* ---------- boot ---------- */
   render();
@@ -1009,7 +1113,7 @@ body.gm .gm-only.flexy { display: flex; }
     });
   });
 
-  var started = false;
+  var started = false, channel = null, poll = null;
   function start(session) {
     if (started || !session) return; started = true;
     myId = session.user.id;
@@ -1024,29 +1128,55 @@ body.gm .gm-only.flexy { display: flex; }
         $("gmToggleWrap").hidden = false;
         var saved = false; try { saved = localStorage.getItem("ledger-gm") === "1"; } catch (e) {}
         $("gmToggle").checked = saved; gm = saved;
-        $("gmToggle").addEventListener("change", function () { gm = $("gmToggle").checked; try { localStorage.setItem("ledger-gm", gm ? "1" : "0"); } catch (e) {} pinFor = null; render(); });
         ["quests", "people", "places"].forEach(buildForm);
       }
-      return Promise.all(COLLECTIONS.map(refetch)).then(function () { setStatus(""); });
-    }).catch(function () { setStatus("Couldn't open the ledger. Reload the page to try again."); COLLECTIONS.forEach(function (k) { loaded[k] = true; }); render(); });
+      return Promise.all(COLLECTIONS.map(refetch).concat([loadBallot()])).then(function () { setStatus(""); });
+    }).catch(function () { setStatus("Couldn't open the ledger. Reload the page to try again."); COLLECTIONS.forEach(function (k) { loaded[k] = true; }); loaded.ballot = true; render(); });
 
-    sb.channel("ledger")
+    channel = sb.channel("ledger")
       .on("postgres_changes", { event: "*", schema: "public", table: "docs" }, function (p) {
         var c = (p.new && p.new.collection) || (p.old && p.old.collection);
         if (c && COLLECTIONS.indexOf(c) >= 0) refetchSoon(c); else COLLECTIONS.forEach(refetchSoon);
       })
       .on("postgres_changes", { event: "*", schema: "public", table: "members" }, function () { refetchSoon("members"); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "votes" }, function () { refetchSoon("ballot"); })
       .subscribe();
     // Catch anything live updates miss (like the GM hiding something again).
-    setInterval(function () { if (!document.hidden) refreshAll().catch(function () {}); }, 60000);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) refreshAll().catch(function () {}); });
+    poll = setInterval(function () { if (started && !document.hidden) refreshAll().catch(function () {}); }, 60000);
   }
+
+  // Close the session in place and go back to the login form (no page reload).
+  function stop(msg) {
+    if (!started) { showLogin(msg); return; }
+    started = false; epoch++;
+    clearInterval(poll); poll = null;
+    Object.keys(pending).forEach(function (k) { clearTimeout(pending[k]); pending[k] = null; });
+    if (channel) { var ch = channel; channel = null; setTimeout(function () { sb.removeChannel(ch); }, 0); }
+    myId = null; db = null; isOwner = false; gm = false; members = [];
+    renaming = false; confirming = null; pinFor = null; activePlace = null; selPerson = null; explicitSel = false;
+    editing = { quests: null, people: null, places: null };
+    state = { quests: [], people: [], places: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
+    Object.keys(loaded).forEach(function (k) { loaded[k] = false; });
+    ballotError = false;
+    $("gmToggleWrap").hidden = true; $("gmToggle").checked = false;
+    ["quests", "people", "places"].forEach(function (k) { $("form-" + k).textContent = ""; });
+    setStatus(""); render();
+    showLogin(msg);
+  }
+  function logOut() {
+    // "local" clears this browser's session without waiting on the server, so a network hiccup can't block it.
+    sb.auth.signOut({ scope: "local" }).then(function () { stop(""); }, function () { stop(""); });
+  }
+
+  $("gmToggle").addEventListener("change", function () { gm = $("gmToggle").checked; try { localStorage.setItem("ledger-gm", gm ? "1" : "0"); } catch (e) {} pinFor = null; render(); });
+  document.addEventListener("visibilitychange", function () { if (started && !document.hidden) refreshAll().catch(function () {}); });
 
   sb.auth.getSession().then(function (r) {
     var s = r && r.data && r.data.session;
     if (s) start(s); else showLogin("");
-  });
-  sb.auth.onAuthStateChange(function (ev) { if (ev === "SIGNED_OUT") { location.reload(); } });
+  }, function () { showLogin(""); });
+  // Signed out elsewhere (another tab, or an expired session). Deferred: supabase-js holds its auth lock during this callback.
+  sb.auth.onAuthStateChange(function (ev) { if (ev === "SIGNED_OUT") setTimeout(function () { stop(""); }, 0); });
 })();
 </script>
 </body>
