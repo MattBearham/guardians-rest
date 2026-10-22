@@ -1,0 +1,1053 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guardian's Rest Ledger</title>
+<script>
+/* ===== SETTINGS: paste your Supabase details here (Supabase > Project Settings > API) ===== */
+window.LEDGER_CONFIG = {
+  supabaseUrl: "PASTE_YOUR_PROJECT_URL_HERE",      // looks like https://abcdefgh.supabase.co
+  supabaseAnonKey: "PASTE_YOUR_ANON_PUBLIC_KEY_HERE", // the long "anon" "public" key (safe to publish)
+  loginDomain: "ledger.example.com"                  // usernames become username@ledger.example.com
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans+SC:wght@500;700&display=swap">
+<style>
+/* Layout: a guild ledger. Sea-glass paper, harbour-ink text, a coral wax-seal accent; one column, tabbed sections, a hand-drawn chart of the cove. */
+:root {
+  --paper: #edf1ea;
+  --card: #f8f9f4;
+  --ink: #1c2a31;
+  --muted: #56666b;
+  --line: #c6d1ca;
+  --sea: #2c6c76;
+  --sea-soft: #cfe1df;
+  --sand: #e4d7b4;
+  --kelp: #66783a;
+  --land: #dfe5d3;
+  --accent: #b5412c;
+  --accent-ink: #fff8f2;
+  --hidden: #8a7a3a;
+  --f-display: "IM Fell English", "Iowan Old Style", Georgia, serif;
+  --f-body: "Alegreya", "Iowan Old Style", Georgia, serif;
+  --f-label: "Alegreya Sans SC", "Gill Sans", "Trebuchet MS", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f181c; --card: #152126; --ink: #e5e9e1; --muted: #93a2a3; --line: #2a3b41;
+    --sea: #63afb6; --sea-soft: #173238; --sand: #3a3524; --kelp: #a6b86b; --land: #1b2a26;
+    --accent: #e27a5f; --accent-ink: #1a0f0b; --hidden: #cbb867; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f181c; --card: #152126; --ink: #e5e9e1; --muted: #93a2a3; --line: #2a3b41;
+  --sea: #63afb6; --sea-soft: #173238; --sand: #3a3524; --kelp: #a6b86b; --land: #1b2a26;
+  --accent: #e27a5f; --accent-ink: #1a0f0b; --hidden: #cbb867; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.55; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 400; text-wrap: balance; margin: 0; }
+.label { font-family: var(--f-label); font-weight: 700; letter-spacing: .06em; font-size: 13px; color: var(--muted); }
+
+/* header */
+.head { display: flex; gap: 18px; align-items: center; padding-bottom: 18px; border-bottom: 2px solid var(--ink); }
+.crest { flex: none; width: 58px; height: 64px; }
+.head h1 { font-size: clamp(30px, 6vw, 46px); line-height: 1.05; }
+.head p { margin: 4px 0 0; color: var(--muted); font-style: italic; }
+.gm-flag { margin-left: auto; align-self: flex-start; }
+
+/* tabs */
+nav { display: flex; gap: 4px; flex-wrap: wrap; margin: 18px 0 26px; border-bottom: 1px solid var(--line); }
+nav button { font: 700 15px/1 var(--f-label); letter-spacing: .06em; background: none; border: 0; color: var(--muted); padding: 12px 14px 11px; border-bottom: 3px solid transparent; margin-bottom: -1px; cursor: pointer; }
+nav button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+nav button:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--sea); outline-offset: 2px; }
+nav .count { font-family: var(--f-body); font-weight: 400; color: var(--muted); margin-left: 4px; }
+
+section[hidden] { display: none !important; }
+@media (max-width: 640px) { .head { flex-wrap: wrap; } .who { order: 3; width: 100%; justify-content: flex-start; margin-left: 0; } .gm-flag { margin-left: auto; } }
+.section-intro { margin: 0 0 20px; color: var(--muted); max-width: 62ch; }
+
+/* quests */
+.group { display: grid; gap: 12px; margin-bottom: 28px; }
+.group > h2 { font-size: 24px; display: flex; align-items: baseline; gap: 10px; }
+.group > h2 .label { font-size: 12px; }
+.quest { position: relative; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 4px; padding: 16px 18px 16px 18px; display: grid; gap: 6px; min-width: 0; }
+.quest.completed { border-left-color: var(--kelp); }
+.quest.available { border-left-color: var(--muted); }
+.quest h3 { font-size: 23px; line-height: 1.15; padding-right: 110px; }
+.quest .meta { display: flex; gap: 6px 16px; flex-wrap: wrap; font-size: 15px; color: var(--muted); }
+.quest .meta b { font-family: var(--f-label); font-size: 13px; letter-spacing: .05em; margin-right: 4px; color: var(--ink); }
+.quest p { margin: 0; max-width: 68ch; }
+.stamp { position: absolute; top: 14px; right: 14px; font: 700 12px/1 var(--f-label); letter-spacing: .1em; padding: 6px 9px; border: 2px solid currentColor; border-radius: 3px; transform: rotate(-4deg); color: var(--sea); }
+.completed .stamp { color: var(--kelp); }
+.available .stamp { color: var(--muted); }
+
+/* people */
+.people { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.person { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 16px; display: grid; grid-template-columns: 48px 1fr; gap: 4px 14px; align-content: start; min-width: 0; }
+.mono { grid-row: span 3; width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font: 400 24px/1 var(--f-display); color: var(--accent-ink); background: var(--accent); }
+.person h3 { font-size: 21px; line-height: 1.15; }
+.person .role { font-size: 15px; color: var(--muted); font-style: italic; }
+.person p { grid-column: 1 / -1; margin: 8px 0 0; font-size: 16px; }
+.person .where { grid-column: 1 / -1; font-size: 14px; color: var(--muted); }
+.dir { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.dir-list { display: grid; gap: 4px; align-content: start; }
+.dir-row { display: grid; grid-template-columns: 36px 1fr; gap: 2px 12px; align-items: center; text-align: left; width: 100%; background: transparent; border: 1px solid transparent; border-radius: 4px; padding: 8px 10px; cursor: pointer; color: var(--ink); font: inherit; }
+.dir-row:hover { background: var(--card); border-color: var(--line); }
+.dir-row[aria-current="true"] { background: var(--card); border-color: var(--accent); }
+.dir-row .mono { grid-row: span 2; width: 36px; height: 36px; font-size: 18px; }
+.dir-row .nm { font: 400 18px/1.15 var(--f-display); }
+.dir-row .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dir-row.is-hidden { opacity: .6; }
+.dir-letter { font: 700 12px var(--f-label); letter-spacing: .08em; color: var(--muted); padding: 10px 10px 2px; }
+.dir-detail { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 20px 22px; display: grid; gap: 14px; min-width: 0; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.dir-head { display: grid; grid-template-columns: 64px 1fr; gap: 4px 16px; align-items: center; }
+.dir-head .mono { grid-row: span 3; width: 64px; height: 64px; font-size: 32px; }
+.dir-head h2 { font-size: clamp(26px, 4vw, 32px); line-height: 1.1; }
+.dir-head .role { font-style: italic; color: var(--muted); }
+.dir-head .where { font-size: 14px; color: var(--muted); }
+.dir-detail h3 { font: 700 13px var(--f-label); letter-spacing: .08em; color: var(--muted); margin: 0; }
+.dir-detail .known { margin: 0; white-space: pre-wrap; max-width: 68ch; }
+.log { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.log li { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.log .ses { font: 700 12px/1.6 var(--f-label); letter-spacing: .06em; color: var(--sea); font-variant-numeric: tabular-nums; }
+.log p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.log .del { margin-top: 6px; }
+.back-btn { display: none; justify-self: start; }
+.search { margin-bottom: 12px; }
+@media (max-width: 720px) {
+  .dir { grid-template-columns: 1fr; }
+  .dir-detail { position: static; }
+  .dir.has-sel .dir-list { display: none; }
+  .dir:not(.has-sel) .dir-detail { display: none; }
+  .back-btn { display: inline-block; }
+  .log li { grid-template-columns: 1fr; gap: 2px; }
+}
+
+/* places */
+.chart-box { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 10px; margin-bottom: 18px; }
+.chart-scroll { overflow-x: auto; }
+.chart-box svg { display: block; width: 100%; height: auto; min-width: 620px; }
+.chart-cap { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 6px 4px 0; font-size: 14px; color: var(--muted); }
+.pin { cursor: pointer; }
+.pin circle.dot { fill: var(--accent); stroke: var(--card); stroke-width: 3; }
+.pin.hidden-pin circle.dot { fill: var(--hidden); opacity: .7; }
+.pin text { font: 700 15px var(--f-label); letter-spacing: .04em; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 5px; stroke-linejoin: round; }
+.pin.active circle.dot { r: 11; }
+.places { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.place { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 4px; min-width: 0; }
+.place.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.place h3 { font-size: 21px; }
+.place p { margin: 0; font-size: 16px; }
+
+/* guild */
+.rank-card { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 20px 22px; margin-bottom: 18px; }
+.rank-badge { grid-row: span 3; width: 86px; height: 96px; display: grid; place-items: center; }
+.rank-badge svg { width: 86px; height: 96px; }
+.rank-card .label { font-size: 12px; }
+.rank-title { font: 400 clamp(28px, 5vw, 38px)/1.05 var(--f-display); margin: 0; }
+.xp-row { display: grid; gap: 6px; min-width: 0; }
+.xp-bar { height: 12px; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.xp-fill { height: 100%; background: var(--sea); border-radius: 6px; }
+.xp-text { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+@media (max-width: 560px) { .rank-card { grid-template-columns: 1fr; } .rank-badge { grid-row: auto; } }
+.levelup { border: 2px solid var(--accent); background: var(--card); border-radius: 4px; padding: 14px 16px; margin-bottom: 18px; font-size: 16px; }
+.levelup b { font-family: var(--f-label); letter-spacing: .06em; color: var(--accent); margin-right: 6px; }
+.guild-h { font-size: 24px; margin: 26px 0 10px; display: flex; gap: 10px; align-items: baseline; }
+.guild-h .label { font-size: 12px; }
+.improvements { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.imp { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.imp h3 { font-size: 21px; line-height: 1.15; }
+.imp p { margin: 0; font-size: 16px; }
+.imp .benefit { font-size: 15px; border-top: 1px dashed var(--line); padding-top: 6px; }
+.imp .benefit b { font-family: var(--f-label); font-size: 12px; letter-spacing: .06em; margin-right: 4px; }
+.imp.built { border-color: var(--kelp); box-shadow: inset 4px 0 0 var(--kelp); }
+.imp.locked { opacity: .55; }
+.pill { justify-self: start; font: 700 11px/1 var(--f-label); letter-spacing: .08em; padding: 5px 8px; border-radius: 3px; border: 1px solid currentColor; }
+.pill.built { color: var(--kelp); }
+.pill.avail { color: var(--sea); }
+.pill.locked { color: var(--muted); }
+.ladder { margin-top: 26px; }
+.ladder summary { cursor: pointer; font: 700 14px var(--f-label); letter-spacing: .06em; color: var(--muted); }
+.ladder ol { margin: 10px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; font-variant-numeric: tabular-nums; }
+.ladder li { font-size: 15px; color: var(--muted); display: flex; gap: 8px; }
+.ladder li b { font-family: var(--f-label); min-width: 2.2em; color: var(--ink); }
+.ladder li.now { color: var(--ink); font-weight: 600; }
+.ladder li.now b { color: var(--accent); }
+.xp-log { font-size: 15px; color: var(--muted); margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+
+/* notes */
+.compose { display: grid; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 20px; }
+textarea, input[type="text"], input[type="number"], input[type="password"], select { width: 100%; font: 16px/1.45 var(--f-body); color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 9px 11px; }
+textarea { min-height: 96px; resize: vertical; }
+.row { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.btn { font: 700 14px/1 var(--f-label); letter-spacing: .06em; background: var(--ink); color: var(--paper); border: 0; border-radius: 3px; padding: 11px 16px; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
+.btn.small { padding: 7px 10px; font-size: 12px; }
+.btn.danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+.btn:disabled { opacity: .5; cursor: default; }
+.note-list { display: grid; gap: 10px; }
+.note { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 12px 16px; min-width: 0; }
+.note .by { display: flex; gap: 10px; align-items: center; font-size: 14px; color: var(--muted); margin-bottom: 6px; flex-wrap: wrap; }
+.note .by img { width: 22px; height: 22px; border-radius: 50%; }
+.note .by b { color: var(--ink); font-weight: 600; }
+.note .by .del { margin-left: auto; }
+.note p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.empty { border: 1px dashed var(--line); border-radius: 4px; padding: 22px; color: var(--muted); text-align: center; font-style: italic; }
+.status-line { font-size: 14px; color: var(--muted); min-height: 1.4em; margin: 0; }
+#status { margin: -14px 0 8px; }
+
+/* GM controls */
+.gm-only { display: none; }
+body.gm .gm-only { display: revert; }
+body.gm .gm-only.flexy { display: flex; }
+.chip { font: 700 11px/1 var(--f-label); letter-spacing: .08em; padding: 5px 7px; border-radius: 3px; border: 1px solid var(--hidden); color: var(--hidden); }
+.is-hidden { opacity: .62; border-style: dashed; }
+.gm-bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; grid-column: 1 / -1; }
+.gm-panel { background: var(--sea-soft); border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 20px; }
+.gm-panel summary { cursor: pointer; font: 700 14px var(--f-label); letter-spacing: .06em; }
+.gm-form { display: grid; gap: 10px; margin-top: 12px; }
+.gm-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+@media (max-width: 560px) { .gm-form .two { grid-template-columns: 1fr; } .quest h3 { padding-right: 0; padding-top: 26px; } }
+.toggle { display: inline-flex; gap: 8px; align-items: center; font: 700 13px var(--f-label); letter-spacing: .05em; color: var(--muted); cursor: pointer; }
+/* profiles */
+.who { margin-left: auto; align-self: flex-start; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; font-size: 14px; color: var(--muted); }
+.who b { color: var(--ink); font-family: var(--f-display); font-size: 18px; font-weight: 400; }
+.who .mono { width: 30px; height: 30px; font-size: 16px; }
+.gm-flag { margin-left: 0; }
+.claim { background: var(--card); border: 2px solid var(--accent); border-radius: 4px; padding: 16px 18px; margin-bottom: 20px; display: grid; gap: 12px; }
+.claim h2 { font-size: 24px; }
+.slots { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.slot { border: 1px solid var(--line); border-radius: 4px; padding: 12px; display: grid; gap: 8px; align-content: start; background: var(--paper); min-width: 0; }
+.slot .label { font-size: 12px; }
+.slot.taken { opacity: .7; }
+.slot b { font: 400 19px/1.2 var(--f-display); overflow-wrap: anywhere; }
+.note .by .mono { width: 24px; height: 24px; font-size: 13px; }
+/* login */
+.login { max-width: 420px; margin: 0 auto; padding: 12vh 16px 48px; display: grid; gap: 18px; justify-items: center; text-align: center; }
+.login .crest { width: 84px; height: 92px; }
+.login h1 { font-size: clamp(32px, 8vw, 44px); line-height: 1.05; }
+.login form { width: 100%; display: grid; gap: 12px; text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 20px; }
+.login input { width: 100%; }
+.login .status-line { min-height: 1.4em; margin: 0; }
+[hidden] { display: none !important; }
+.slot input { width: 100%; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<main class="login" id="login" hidden>
+  <svg class="crest" viewBox="0 0 100 110" aria-hidden="true">
+    <path d="M50 4 L92 18 V54 C92 80 72 98 50 106 C28 98 8 80 8 54 V18 Z" fill="var(--sea)" stroke="var(--ink)" stroke-width="3"/>
+    <path d="M50 26 L56 44 L75 44 L60 55 L66 74 L50 63 L34 74 L40 55 L25 44 L44 44 Z" fill="var(--sand)"/>
+  </svg>
+  <div>
+    <h1>Guardian's Rest Ledger</h1>
+    <p class="section-intro" style="margin:6px 0 0">Amaran Guild of Adventurers · members only</p>
+  </div>
+  <form id="loginForm" autocomplete="on">
+    <label class="label" for="loginUser">Username</label>
+    <input type="text" id="loginUser" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    <label class="label" for="loginPass">Password</label>
+    <input type="password" id="loginPass" autocomplete="current-password" required>
+    <button class="btn" type="submit" id="loginBtn">Open the ledger</button>
+    <p class="status-line" id="loginStatus" role="status"></p>
+  </form>
+</main>
+
+<div class="wrap" id="app" hidden>
+  <header class="head">
+    <svg class="crest" viewBox="0 0 100 110" aria-hidden="true">
+      <path d="M50 4 L92 18 V54 C92 80 72 98 50 106 C28 98 8 80 8 54 V18 Z" fill="var(--sea)" stroke="var(--ink)" stroke-width="3"/>
+      <path d="M50 26 L56 44 L75 44 L60 55 L66 74 L50 63 L34 74 L40 55 L25 44 L44 44 Z" fill="var(--sand)"/>
+    </svg>
+    <div>
+      <h1>Guardian's Rest Ledger</h1>
+      <p>Amaran Guild of Adventurers · Guardian's Rest branch</p>
+    </div>
+    <div class="who" id="who"></div>
+    <label class="toggle gm-flag" id="gmToggleWrap" hidden>
+      <input type="checkbox" id="gmToggle"> GM view
+    </label>
+  </header>
+
+  <nav role="tablist" aria-label="Ledger sections">
+    <button role="tab" id="tab-guild" data-tab="guild" aria-selected="true">The guild</button>
+    <button role="tab" id="tab-quests" data-tab="quests" aria-selected="false">Quest log<span class="count" id="c-quests"></span></button>
+    <button role="tab" id="tab-people" data-tab="people" aria-selected="false">People<span class="count" id="c-people"></span></button>
+    <button role="tab" id="tab-places" data-tab="places" aria-selected="false">Places<span class="count" id="c-places"></span></button>
+    <button role="tab" id="tab-notes" data-tab="notes" aria-selected="false">The board<span class="count" id="c-notes"></span></button>
+  </nav>
+
+  <p class="status-line" id="status"></p>
+  <div id="claim" hidden></div>
+
+  <section id="guild" role="tabpanel" aria-labelledby="tab-guild">
+    <div id="guild-body"></div>
+  </section>
+
+  <section id="quests" role="tabpanel" aria-labelledby="tab-quests" hidden>
+    <p class="section-intro">Jobs the guild has taken on, and jobs posted on the board.</p>
+    <details class="gm-panel gm-only" id="form-quests"></details>
+    <div id="quest-groups"></div>
+  </section>
+
+  <section id="people" role="tabpanel" aria-labelledby="tab-people" hidden>
+    <p class="section-intro">Everyone the guild has met: who they are, what you know about them, and every time you've crossed paths.</p>
+    <details class="gm-panel gm-only" id="form-people"></details>
+    <label class="label" for="peopleSearch">Find someone</label>
+    <input type="text" id="peopleSearch" class="search" placeholder="Search by name, role or place" autocomplete="off">
+    <div id="people-list"></div>
+  </section>
+
+  <section id="places" role="tabpanel" aria-labelledby="tab-places" hidden>
+    <p class="section-intro">The cove, the town, and what lies beyond it. Tap a pin or a card to find it on the chart.</p>
+    <details class="gm-panel gm-only" id="form-places"></details>
+    <div class="chart-box">
+      <div class="chart-scroll"><svg id="chart" viewBox="0 0 1000 680" role="img" aria-label="Chart of Guardian's Rest and its surroundings"></svg></div>
+      <div class="chart-cap"><span>Chart of the cove, drawn by the guild</span><span id="pin-hint" class="gm-only">Click "Pin on chart" on a place, then click the chart.</span></div>
+    </div>
+    <div id="place-list"></div>
+  </section>
+
+  <section id="notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
+    <p class="section-intro">The guild's board: theories, clues, debts, grudges, and anything you don't want to forget. Everything here is posted in character.</p>
+    <div id="profile-admin"></div>
+    <form class="compose" id="compose">
+      <label class="label" for="noteText" id="noteLabel">Post to the board</label>
+      <textarea id="noteText" maxlength="4000" placeholder="Agatha says the gulls are watching. Is she right?"></textarea>
+      <div class="row"><span class="status-line" id="noteStatus"></span><button class="btn" id="notePost" type="submit">Post</button></div>
+    </form>
+    <div id="note-list" class="note-list"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var KINDS = {
+    quests: { label: "quest", fields: [
+      ["title", "Title", "text"], ["giver", "Posted by", "text"], ["reward", "Reward", "text"],
+      ["status", "Status", "select", ["available", "active", "completed"]], ["order", "Order", "number"], ["xp", "Guild XP", "number"],
+      ["summary", "What the party knows", "area"]] },
+    people: { label: "person", fields: [
+      ["name", "Name", "text"], ["role", "Who they are", "text"], ["where", "Where to find them", "text"],
+      ["order", "Order", "number"], ["summary", "What the party knows", "area"]] },
+    places: { label: "place", fields: [
+      ["name", "Name", "text"], ["kind", "Kind of place", "text"], ["order", "Order", "number"],
+      ["summary", "What the party knows", "area"]] }
+  };
+  var state = { quests: [], people: [], places: [], notes: [], improvements: [], guild: [], picks: [] };
+  var members = [];
+  var loaded = { quests: false, people: false, places: false, notes: false, improvements: false, guild: false, picks: false, members: false };
+  var COLLECTIONS = ["quests", "people", "places", "notes", "improvements", "guild", "picks"];
+  var confirming = null, pickProfiles = {};
+  var db = null, sb = null, myId = null, isOwner = false, gm = false;
+  var editing = { quests: null, people: null, places: null };
+  var pinFor = null, activePlace = null;
+
+  function el(tag, attrs, kids) {
+    var n = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === "text") n.textContent = attrs[k];
+      else if (k === "cls") n.className = attrs[k];
+      else if (k.slice(0, 2) === "on") n.addEventListener(k.slice(2), attrs[k]);
+      else n.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function (c) { if (c) n.appendChild(c); });
+    return n;
+  }
+  function $(id) { return document.getElementById(id); }
+  function setStatus(msg) { $("status").textContent = msg || ""; }
+  function byOrder(a, b) { return (a.d.order || 999) - (b.d.order || 999) || String(a.d.title || a.d.name || "").localeCompare(String(b.d.title || b.d.name || "")); }
+  function visible(list) { return list.filter(function (x) { return gm || x.d.revealed === true; }); }
+
+  /* ---------- tabs ---------- */
+  var TABS = ["guild", "quests", "people", "places", "notes"];
+  function showTab(name) {
+    if (TABS.indexOf(name) < 0) name = "guild";
+    TABS.forEach(function (t) {
+      $(t).hidden = t !== name;
+      $("tab-" + t).setAttribute("aria-selected", t === name ? "true" : "false");
+    });
+    try { history.replaceState(null, "", "#" + name); } catch (e) {}
+  }
+  document.querySelectorAll("nav button").forEach(function (b) {
+    b.addEventListener("click", function () { showTab(b.dataset.tab); });
+  });
+  showTab((location.hash || "").slice(1));
+
+  /* ---------- render ---------- */
+  function render() {
+    document.body.classList.toggle("gm", gm);
+    renderProfiles(); renderGuild(); renderQuests(); renderPeople(); renderPlaces(); renderNotes();
+    $("c-quests").textContent = loaded.quests ? " " + visible(state.quests).length : "";
+    $("c-people").textContent = loaded.people ? " " + visible(state.people).length : "";
+    $("c-places").textContent = loaded.places ? " " + visible(state.places).length : "";
+    $("c-notes").textContent = loaded.notes ? " " + state.notes.length : "";
+  }
+
+  function gmBar(kind, item) {
+    if (!gm) return null;
+    var d = item.d;
+    var bar = el("div", { cls: "gm-bar" }, [
+      d.revealed ? null : el("span", { cls: "chip", text: "HIDDEN FROM PLAYERS" }),
+      el("button", { cls: "btn small ghost", type: "button", text: d.revealed ? "Hide" : "Reveal to players",
+        onclick: function () { write(db.collection(kind).doc(item.id).update({ revealed: !d.revealed }), d.revealed ? "Hidden." : "Revealed to players."); } }),
+      el("button", { cls: "btn small ghost", type: "button", text: "Edit", onclick: function () { startEdit(kind, item); } })
+    ]);
+    if (kind === "quests") {
+      var sel = el("select", { "aria-label": "Quest status", id: "status-" + item.id });
+      ["available", "active", "completed"].forEach(function (s) {
+        var o = el("option", { value: s, text: s.charAt(0).toUpperCase() + s.slice(1) });
+        if (s === (d.status || "available")) o.selected = true; sel.appendChild(o);
+      });
+      sel.style.width = "auto";
+      sel.addEventListener("change", function () { write(db.collection("quests").doc(item.id).update({ status: sel.value }), "Status updated."); });
+      bar.appendChild(sel);
+    }
+    if (kind === "places") {
+      bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: pinFor === item.id ? "Click the chart…" : "Pin on chart",
+        onclick: function () { pinFor = pinFor === item.id ? null : item.id; render(); } }));
+    }
+    return bar;
+  }
+
+  function renderQuests() {
+    var box = $("quest-groups"); box.textContent = "";
+    if (!loaded.quests) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    var list = visible(state.quests).sort(byOrder);
+    if (!list.length) { box.appendChild(el("div", { cls: "empty", text: "No jobs on the board yet. The guild's first commission arrives at the welcome ceremony." })); return; }
+    [["active", "In progress"], ["available", "On the job board"], ["completed", "Completed"]].forEach(function (g) {
+      var items = list.filter(function (q) { return (q.d.status || "available") === g[0]; });
+      if (!items.length) return;
+      var grp = el("div", { cls: "group" }, [el("h2", null, [document.createTextNode(g[1] + " "), el("span", { cls: "label", text: items.length + (items.length === 1 ? " JOB" : " JOBS") })])]);
+      items.forEach(function (q) {
+        var d = q.d, st = d.status || "available";
+        var meta = el("div", { cls: "meta" });
+        if (d.giver) meta.appendChild(el("span", null, [el("b", { text: "POSTED BY" }), document.createTextNode(d.giver)]));
+        if (d.reward) meta.appendChild(el("span", null, [el("b", { text: "REWARD" }), document.createTextNode(d.reward)]));
+        if (d.xp) meta.appendChild(el("span", null, [el("b", { text: "GUILD XP" }), document.createTextNode(Number(d.xp).toLocaleString())]));
+        grp.appendChild(el("article", { cls: "quest " + st + (d.revealed ? "" : " is-hidden") }, [
+          el("span", { cls: "stamp", text: st === "active" ? "IN PROGRESS" : st === "completed" ? "DONE" : "POSTED" }),
+          el("h3", { text: d.title || "Untitled job" }), meta,
+          d.summary ? el("p", { text: d.summary }) : null,
+          gmBar("quests", q)
+        ]));
+      });
+      box.appendChild(grp);
+    });
+  }
+
+  var selPerson = null, explicitSel = false, peopleQuery = "";
+  function personInitial(n) { return String(n || "?").replace(/^(The|Captain|Old Mother|Grandma|Father)\s+/i, "").charAt(0).toUpperCase(); }
+  function lastSeen(d) { var m = 0; (d.log || []).forEach(function (e) { if (Number(e.session) > m) m = Number(e.session); }); return m; }
+  function renderPeople() {
+    var box = $("people-list"); box.textContent = "";
+    if (!loaded.people) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    var all = visible(state.people).slice().sort(function (a, b) { return String(a.d.name || "").localeCompare(String(b.d.name || "")); });
+    if (!all.length) { box.appendChild(el("div", { cls: "empty", text: "You haven't met anyone yet. New faces will appear here as you meet them." })); return; }
+    var q = peopleQuery.trim().toLowerCase();
+    var list = !q ? all : all.filter(function (p) { return [p.d.name, p.d.role, p.d.where, p.d.summary].join(" ").toLowerCase().indexOf(q) >= 0; });
+    if (selPerson && !all.some(function (p) { return p.id === selPerson; })) { selPerson = null; explicitSel = false; }
+    var current = all.filter(function (p) { return p.id === selPerson; })[0] || list[0] || all[0];
+
+    var dir = el("div", { cls: "dir" + (explicitSel ? " has-sel" : "") });
+    var lst = el("div", { cls: "dir-list", role: "navigation", "aria-label": "People" });
+    if (!list.length) lst.appendChild(el("div", { cls: "empty", text: "Nobody matches that search." }));
+    var letter = "";
+    list.forEach(function (p) {
+      var d = p.d, n = String(d.name || "?"), L = personInitial(n), seen = lastSeen(d);
+      if (L !== letter) { letter = L; lst.appendChild(el("div", { cls: "dir-letter", text: L })); }
+      lst.appendChild(el("button", { type: "button", cls: "dir-row" + (d.revealed ? "" : " is-hidden"), "aria-current": current && current.id === p.id ? "true" : "false",
+        onclick: function () { selPerson = p.id; explicitSel = true; renderPeople(); var dd = document.querySelector(".dir-detail"); if (dd && window.innerWidth <= 720) dd.scrollIntoView({ block: "start" }); } }, [
+        el("span", { cls: "mono", "aria-hidden": "true", text: L }),
+        el("span", { cls: "nm", text: n }),
+        el("span", { cls: "sub", text: (d.role || "") + (seen ? " · last seen session " + seen : "") })
+      ]));
+    });
+    dir.appendChild(lst);
+
+    var det = el("article", { cls: "dir-detail" });
+    if (current) {
+      var d = current.d, n = String(d.name || "?");
+      det.appendChild(el("button", { cls: "btn small ghost back-btn", type: "button", text: "← Everyone", onclick: function () { explicitSel = false; renderPeople(); } }));
+      det.appendChild(el("div", { cls: "dir-head" }, [
+        el("div", { cls: "mono", "aria-hidden": "true", text: personInitial(n) }),
+        el("h2", { text: n }),
+        d.role ? el("div", { cls: "role", text: d.role }) : null,
+        d.where ? el("div", { cls: "where", text: "Found: " + d.where }) : null
+      ]));
+      det.appendChild(el("h3", { text: "WHAT WE KNOW" }));
+      det.appendChild(el("p", { cls: "known", text: d.summary || "Not much yet." }));
+      var log = (d.log || []).map(function (e, ix) { return { e: e, ix: ix }; }).sort(function (a, b) { return (Number(b.e.session) || 0) - (Number(a.e.session) || 0) || b.ix - a.ix; });
+      det.appendChild(el("h3", { text: "INTERACTIONS" + (log.length ? " · " + log.length : "") }));
+      if (!log.length) det.appendChild(el("p", { cls: "known", text: "No recorded interactions yet." }));
+      else {
+        var ul = el("ul", { cls: "log" });
+        log.forEach(function (x) {
+          var li = el("li", null, [
+            el("span", { cls: "ses", text: x.e.session ? "SESSION " + x.e.session : "EARLIER" }),
+            el("div", null, [el("p", { text: x.e.text || "" }),
+              gm ? el("button", { cls: "btn small danger del", type: "button", text: "Delete entry", onclick: function () {
+                var arr = (current.d.log || []).slice(); arr.splice(x.ix, 1);
+                write(db.collection("people").doc(current.id).update({ log: arr }), "Entry deleted.");
+              } }) : null])
+          ]);
+          ul.appendChild(li);
+        });
+        det.appendChild(ul);
+      }
+      if (gm) {
+        var sesIn = el("input", { type: "number", id: "logSession", min: "1", placeholder: "Session" }); sesIn.style.width = "110px";
+        var txt = el("textarea", { id: "logText", placeholder: "What happened between the party and " + n + "?" }); txt.style.minHeight = "70px";
+        det.appendChild(el("div", { cls: "gm-panel" }, [
+          el("div", { cls: "label", text: "GM: ADD AN INTERACTION" }),
+          el("div", { cls: "gm-form" }, [sesIn, txt, el("button", { cls: "btn small", type: "button", text: "Add to log", onclick: function () {
+            var s2 = Number($("logSession").value) || 0, tx = $("logText").value.trim();
+            if (!tx) { setStatus("Write the entry first."); return; }
+            var arr = (current.d.log || []).slice(); arr.push({ session: s2, text: tx.slice(0, 2000) });
+            write(db.collection("people").doc(current.id).update({ log: arr }), "Added to " + n + "'s log.");
+          } })])
+        ]));
+        var bar = gmBar("people", current); if (bar) det.appendChild(bar);
+      }
+    }
+    dir.appendChild(det);
+    box.appendChild(dir);
+  }
+
+
+  /* ---------- chart ---------- */
+  var SVGNS = "http://www.w3.org/2000/svg";
+  function s(tag, attrs) { var n = document.createElementNS(SVGNS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
+  var chartBase = null;
+  function drawBase(svg) {
+    // shapes are drawn west-sea and mirrored so the sea lies east of town; labels stay unmirrored
+    var g = s("g", { transform: "translate(1000 0) scale(-1 1)" });
+    var gl = s("g", {});
+    g.appendChild(s("rect", { x: 0, y: 0, width: 1000, height: 680, fill: "var(--land)" }));
+    // jungle mass (east)
+    g.appendChild(s("path", { d: "M640 0 H1000 V420 C930 410 880 360 820 360 C760 360 720 300 690 250 C660 200 600 170 610 110 C618 60 640 30 640 0 Z", fill: "var(--kelp)", opacity: ".35" }));
+    for (var i = 0; i < 46; i++) {
+      var x = 660 + (i * 73) % 330, y = 20 + ((i * 131) % 360);
+      if (y > 330 && x < 820) continue;
+      g.appendChild(s("circle", { cx: x, cy: y, r: 14 + (i % 4) * 3, fill: "var(--kelp)", opacity: ".28" }));
+    }
+    // Torun's Spine (south-east ridge)
+    var ridge = "M520 680 L560 600 L600 640 L650 540 L700 610 L750 500 L800 580 L850 470 L900 560 L960 450 L1000 520 V680 Z";
+    g.appendChild(s("path", { d: ridge, fill: "var(--muted)", opacity: ".28" }));
+    g.appendChild(s("path", { d: "M560 600 L600 640 M650 540 L700 610 M750 500 L800 580 M850 470 L900 560 M960 450 L1000 520", stroke: "var(--muted)", "stroke-width": 2, fill: "none", opacity: ".5" }));
+    // sea (west) with the cove
+    var sea = "M0 0 H250 C280 120 260 220 300 300 C330 360 400 370 400 420 C400 480 320 500 290 560 C270 610 250 650 240 680 H0 Z";
+    g.appendChild(s("path", { d: "M0 0 H262 C292 120 272 220 312 300 C342 360 414 370 414 420 C414 486 332 506 302 566 C282 616 262 656 252 680 H0 Z", fill: "var(--sand)" }));
+    g.appendChild(s("path", { d: sea, fill: "var(--sea-soft)" }));
+    for (var w = 0; w < 9; w++) g.appendChild(s("path", { d: "M" + (40 + (w % 3) * 70) + " " + (70 + w * 68) + " q12 -8 24 0 t24 0", stroke: "var(--sea)", "stroke-width": 2, fill: "none", opacity: ".45" }));
+    // river from jungle to cove
+    g.appendChild(s("path", { d: "M1000 300 C900 300 860 260 780 290 C700 320 640 300 580 340 C520 380 460 380 400 405", stroke: "var(--sea)", "stroke-width": 9, fill: "none", opacity: ".55", "stroke-linecap": "round" }));
+    // coastal road north
+    g.appendChild(s("path", { d: "M470 400 C460 320 420 250 400 170 C385 110 360 50 350 0", stroke: "var(--muted)", "stroke-width": 3, "stroke-dasharray": "9 7", fill: "none", opacity: ".7" }));
+    // town blocks
+    [[440, 420, 34, 22], [486, 440, 28, 20], [452, 456, 26, 18], [500, 405, 30, 20], [525, 445, 24, 18], [470, 480, 30, 18]].forEach(function (b) {
+      g.appendChild(s("rect", { x: b[0], y: b[1], width: b[2], height: b[3], rx: 2, fill: "var(--card)", stroke: "var(--ink)", "stroke-width": 1.5, opacity: ".85" }));
+    });
+    // pier
+    g.appendChild(s("rect", { x: 330, y: 436, width: 92, height: 9, fill: "var(--ink)", opacity: ".55" }));
+    // labels
+    function lab(x, y, t, size, italic) { var n = s("text", { x: x, y: y, "text-anchor": "middle", fill: "var(--muted)", "font-family": "IM Fell English, Georgia, serif", "font-size": size, "font-style": italic ? "italic" : "normal", opacity: ".85" }); n.setAttribute("x", 1000 - x); n.textContent = t; gl.appendChild(n); }
+    lab(120, 340, "The Sea", 30, true);
+    lab(360, 30, "to Crabbe's Hollow", 16, true);
+    lab(860, 40, "the jungle", 18, true);
+    lab(800, 660, "the mountains", 18, true);
+    // compass
+    var c = s("g", { transform: "translate(930 610)", opacity: ".8" });
+    c.appendChild(s("circle", { r: 30, fill: "none", stroke: "var(--ink)", "stroke-width": 1.5 }));
+    c.appendChild(s("path", { d: "M0 -26 L7 0 L0 26 L-7 0 Z", fill: "var(--accent)" }));
+    var nl = s("text", { x: 0, y: -34, "text-anchor": "middle", "font-family": "Alegreya Sans SC, sans-serif", "font-size": 14, fill: "var(--ink)" }); nl.textContent = "N"; c.appendChild(nl);
+    gl.appendChild(c);
+    svg.appendChild(g);
+    svg.appendChild(gl);
+    chartBase = g;
+  }
+
+  function svgPoint(svg, evt) {
+    var pt = svg.createSVGPoint(); pt.x = evt.clientX; pt.y = evt.clientY;
+    var m = svg.getScreenCTM(); if (!m) return null;
+    return pt.matrixTransform(m.inverse());
+  }
+
+  function renderPlaces() {
+    var svg = $("chart");
+    if (!chartBase) {
+      drawBase(svg);
+      svg.addEventListener("click", function (evt) {
+        if (!gm || !pinFor || !db) return;
+        var p = svgPoint(svg, evt); if (!p) return;
+        var id = pinFor; pinFor = null;
+        write(db.collection("places").doc(id).update({ x: Math.round(p.x), y: Math.round(p.y) }), "Pinned on the chart.");
+      });
+    }
+    svg.style.cursor = gm && pinFor ? "crosshair" : "default";
+    var old = svg.querySelector("#pins"); if (old) old.remove();
+    var pins = s("g", { id: "pins" });
+    var list = visible(state.places).sort(byOrder);
+    list.forEach(function (pl) {
+      var d = pl.d; if (typeof d.x !== "number" || typeof d.y !== "number") return;
+      var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : ""), transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": String(d.name || "Place") });
+      pg.appendChild(s("circle", { "class": "dot", r: 8 }));
+      var anchorEnd = d.x > 760;
+      var t = s("text", { x: anchorEnd ? -14 : 14, y: 5, "text-anchor": anchorEnd ? "end" : "start" }); t.textContent = String(d.name || "");
+      pg.appendChild(t);
+      function pick(e) { e.stopPropagation(); activePlace = pl.id; render(); var card = $("place-" + pl.id); if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+      pg.addEventListener("click", pick);
+      pg.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") pick(e); });
+      pins.appendChild(pg);
+    });
+    svg.appendChild(pins);
+
+    var box = $("place-list"); box.textContent = "";
+    if (!loaded.places) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    if (!list.length) { box.appendChild(el("div", { cls: "empty", text: "No places charted yet." })); return; }
+    var grid = el("div", { cls: "places" });
+    list.forEach(function (pl) {
+      var d = pl.d;
+      var card = el("article", { cls: "place" + (d.revealed ? "" : " is-hidden") + (activePlace === pl.id ? " active" : ""), id: "place-" + pl.id }, [
+        d.kind ? el("div", { cls: "label", text: String(d.kind).toUpperCase() }) : null,
+        el("h3", { text: d.name || "Unnamed place" }),
+        d.summary ? el("p", { text: d.summary }) : null,
+        gm && (typeof d.x !== "number") ? el("div", { cls: "label", text: "NOT ON THE CHART YET" }) : null,
+        gmBar("places", pl)
+      ]);
+      card.addEventListener("click", function (e) { if (e.target.closest("button, select")) return; activePlace = pl.id; render(); });
+      grid.appendChild(card);
+    });
+    box.appendChild(grid);
+  }
+
+  /* ---------- guild ---------- */
+  var LEVELS = [0, 100, 500, 1400, 2600, 4100, 5900, 8000, 10400, 13100, 16100, 19400, 23000, 26900, 31100, 35600, 40400, 45500, 50900, 56600];
+  var RANKS = ["Adventuring Intern", "Junior Associate", "Associate", "Senior Associate", "Team Lead", "Supervisor", "Assistant Manager", "Manager", "Senior Manager", "Regional Manager", "Director", "Senior Director", "Vice President", "Senior Vice President", "Executive Vice President", "Chief Adventuring Officer", "Managing Partner", "Board Member", "Chair of the Board", "Guildmaster General"];
+  function guildState() { var g = state.guild.filter(function (x) { return x.id === "state"; })[0]; return g ? g.d : {}; }
+  function guildXp() {
+    var xp = 0;
+    state.quests.forEach(function (q) { if ((q.d.status || "") === "completed") xp += Number(q.d.xp) || 0; });
+    return xp + (Number(guildState().bonusXp) || 0);
+  }
+  function levelFor(xp) { var l = 1; for (var i = 0; i < LEVELS.length; i++) if (xp >= LEVELS[i]) l = i + 1; return l; }
+  function badge(level) {
+    var svg = document.createElementNS(SVGNS, "svg"); svg.setAttribute("viewBox", "0 0 100 110"); svg.setAttribute("aria-hidden", "true");
+    svg.appendChild(s("path", { d: "M50 4 L92 18 V54 C92 80 72 98 50 106 C28 98 8 80 8 54 V18 Z", fill: "var(--sea)", stroke: "var(--ink)", "stroke-width": 3 }));
+    var tx = s("text", { x: 50, y: 66, "text-anchor": "middle", "font-family": "IM Fell English, Georgia, serif", "font-size": 40, fill: "var(--sand)" }); tx.textContent = String(level); svg.appendChild(tx);
+    var lt = s("text", { x: 50, y: 30, "text-anchor": "middle", "font-family": "Alegreya Sans SC, sans-serif", "font-size": 12, fill: "var(--sand)", "letter-spacing": 1.5 }); lt.textContent = "LEVEL"; svg.appendChild(lt);
+    return svg;
+  }
+  function renderGuild() {
+    var box = $("guild-body"); box.textContent = "";
+    if (!loaded.quests || !loaded.improvements || !loaded.guild || !loaded.picks) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    var xp = guildXp(), level = levelFor(xp), max = level >= LEVELS.length;
+    var floor = LEVELS[level - 1], next = max ? floor : LEVELS[level];
+    var pct = max ? 100 : Math.max(0, Math.min(100, Math.round((xp - floor) / (next - floor) * 100)));
+    var bar = el("div", { cls: "xp-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": String(pct), "aria-label": "Progress to the next rank" }, [el("div", { cls: "xp-fill" })]);
+    bar.firstChild.style.width = pct + "%";
+    box.appendChild(el("div", { cls: "rank-card" }, [
+      el("div", { cls: "rank-badge" }, [badge(level)]),
+      el("div", { cls: "label", text: "GUILD RANK · AMARAN GUILD OF ADVENTURERS" }),
+      el("h2", { cls: "rank-title", text: RANKS[level - 1] }),
+      el("div", { cls: "xp-row" }, [bar, el("div", { cls: "xp-text" }, [
+        el("span", { text: xp.toLocaleString() + " XP" }),
+        el("span", { text: max ? "Top of the ladder" : (next - xp).toLocaleString() + " XP to " + RANKS[level] + " (level " + (level + 1) + ")" })
+      ])])
+    ]));
+
+    var imps = state.improvements.slice().sort(function (a, b) { return (a.d.minLevel || 0) - (b.d.minLevel || 0) || String(a.d.name).localeCompare(String(b.d.name)); });
+    var picks = state.picks.filter(function (pk) { return pk.d.improvement; });
+    var pickOf = {}; picks.forEach(function (pk) { pickOf[pk.d.improvement] = pk; });
+    var filled = {}; picks.forEach(function (pk) { filled[pk.id] = true; });
+    var openSlot = 0; for (var lv = 2; lv <= level; lv++) { if (!filled["level-" + lv]) { openSlot = lv; break; } }
+    var homeBuilt = imps.some(function (it) { return it.d.home && pickOf[it.id]; });
+    var homePick = imps.filter(function (it) { return it.d.home && pickOf[it.id]; })[0];
+    var homeSite = homePick ? homePick.d.site : null;
+    var SITE_NAMES = { beach: "beach", town: "town", grass: "grassland" };
+    function siteOk(it) { var ss = it.d.sites; return !ss || !ss.length || !homeSite || ss.indexOf(homeSite) >= 0; }
+    function sitesText(it) { return (it.d.sites || []).map(function (x) { return SITE_NAMES[x] || x; }).join(" or "); }
+    function choosable(it) {
+      if (!openSlot || pickOf[it.id]) return false;
+      if (!homeBuilt) return !!it.d.home;
+      return !it.d.home && level >= (it.d.minLevel || 1) && siteOk(it);
+    }
+    var owed = 0; for (var lv2 = 2; lv2 <= level; lv2++) if (!filled["level-" + lv2]) owed++;
+    if (owed > 0) {
+      var msg = !homeBuilt ? "The guild has levelled up. Choose the guild's home: beach, town or grassland. They're equally good, but where you live decides which improvements you can build later."
+        : "The guild has levelled up and can choose " + (owed === 1 ? "a new improvement" : owed + " new improvements") + ". Talk it over, then choose one below.";
+      box.appendChild(el("div", { cls: "levelup" }, [el("b", { text: "LEVEL UP" }), document.createTextNode(msg)]));
+    }
+
+    if (gm) {
+      var g = guildState();
+      var bonus = el("input", { type: "number", id: "bonusXp", step: "50" }); bonus.value = Number(g.bonusXp) || 0; bonus.style.width = "140px";
+      box.appendChild(el("div", { cls: "gm-panel" }, [
+        el("div", { cls: "label", text: "GM: XP ADJUSTMENT" }),
+        el("p", { cls: "section-intro", text: "Guild XP is the total of every completed quest's XP, plus this adjustment (use it for side jobs, bonuses or penalties)." }),
+        el("div", { cls: "row" }, [bonus, el("button", { cls: "btn small", type: "button", text: "Save adjustment", onclick: function () {
+          var v = Number($("bonusXp").value) || 0;
+          write(db.collection("guild").doc("state").set({ bonusXp: v }), "XP adjustment saved.");
+        } })])
+      ]));
+    }
+
+    var pickerIds = picks.map(function (pk) { return pk.d.by; }).filter(Boolean);
+
+    function card(it) {
+      var d = it.d, pk = pickOf[it.id], can = choosable(it), unlocked = d.home || level >= (d.minLevel || 1);
+      var pill = pk ? el("span", { cls: "pill built", text: "BUILT AT LEVEL " + String(pk.id).replace("level-", "") })
+        : can ? el("span", { cls: "pill avail", text: "CAN BE CHOSEN NOW" })
+        : d.home ? el("span", { cls: "pill locked", text: homeBuilt ? "NOT CHOSEN" : "FIRST LEVEL-UP" })
+        : (homeSite && !siteOk(it)) ? el("span", { cls: "pill locked", text: "NEEDS A " + sitesText(it).toUpperCase() + " HOME" })
+        : unlocked ? el("span", { cls: "pill avail", text: "UNLOCKED" }) : el("span", { cls: "pill locked", text: "UNLOCKS AT LEVEL " + d.minLevel });
+      var blocked = !d.home && homeSite && !siteOk(it);
+      var c = el("article", { cls: "imp" + (pk ? " built" : (blocked || !(unlocked || can)) ? " locked" : "") }, [
+        pill, el("h3", { text: d.name || "Improvement" }),
+        d.home && d.site ? el("div", { cls: "label", text: (SITE_NAMES[d.site] || d.site).toUpperCase() }) : null,
+        !d.home && d.sites && d.sites.length ? el("div", { cls: "label", text: sitesText(it).toUpperCase() + " HOMES ONLY" }) : null,
+        d.flavour ? el("p", { text: d.flavour }) : null,
+        d.benefit ? el("p", { cls: "benefit" }, [el("b", { text: "BENEFIT" }), document.createTextNode(d.benefit)]) : null,
+        pk && pk.d.by ? el("p", { cls: "label", text: "CHOSEN BY " + String(profileName(pk.d.by) || pickProfiles[pk.d.by] || (pk.d.by === myId ? "you" : "a party member")).toUpperCase() }) : null
+      ]);
+      if (can && db) {
+        if (confirming === it.id) {
+          c.appendChild(el("div", { cls: "gm-bar" }, [
+            el("span", { text: "Build " + (d.name || "this") + " for level " + openSlot + "?" }),
+            el("button", { cls: "btn small", type: "button", text: "Confirm", onclick: function () {
+              confirming = null;
+              write(db.collection("picks").doc("level-" + openSlot).set({ improvement: it.id, by: myId || null, at: Date.now() }), "Chosen. The guild builds " + (d.name || "it") + ".");
+            } }),
+            el("button", { cls: "btn small ghost", type: "button", text: "Cancel", onclick: function () { confirming = null; renderGuild(); } })
+          ]));
+        } else {
+          c.appendChild(el("div", { cls: "gm-bar" }, [el("button", { cls: "btn small", type: "button", text: "Choose this", onclick: function () { confirming = it.id; renderGuild(); } })]));
+        }
+      }
+      if (gm && pk) c.appendChild(el("div", { cls: "gm-bar" }, [el("button", { cls: "btn small danger", type: "button", text: "Undo this choice", onclick: function () { write(db.collection("picks").doc(pk.id).delete(), "Choice undone."); } })]));
+      return c;
+    }
+
+    var homes = imps.filter(function (it) { return it.d.home; });
+    var rest = imps.filter(function (it) { return !it.d.home; });
+    var builtCount = picks.length;
+    box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode(homeBuilt ? "The guild's home " : "Choose the guild's home "), el("span", { cls: "label", text: "LEVEL 2" })]));
+    var hg = el("div", { cls: "improvements" });
+    (homeBuilt ? homes.filter(function (it) { return pickOf[it.id]; }) : homes).forEach(function (it) { hg.appendChild(card(it)); });
+    if (!homes.length) hg.appendChild(el("div", { cls: "empty", text: "No home options listed yet." }));
+    box.appendChild(hg);
+
+    box.appendChild(el("h2", { cls: "guild-h" }, [document.createTextNode("Improvements "), el("span", { cls: "label", text: builtCount + " BUILT · " + Math.max(0, level - 1) + " EARNED" })]));
+    var tiers = {}; rest.forEach(function (it) { var k = it.d.minLevel || 1; (tiers[k] = tiers[k] || []).push(it); });
+    Object.keys(tiers).map(Number).sort(function (a, b) { return a - b; }).forEach(function (k) {
+      box.appendChild(el("div", { cls: "label", text: "LEVEL " + k + " AND UP" }));
+      var grid = el("div", { cls: "improvements" }); grid.style.margin = "8px 0 18px";
+      tiers[k].forEach(function (it) { grid.appendChild(card(it)); });
+      box.appendChild(grid);
+    });
+
+    var done = state.quests.filter(function (q) { return (q.d.status || "") === "completed" && Number(q.d.xp); }).sort(byOrder);
+    if (done.length) {
+      box.appendChild(el("h2", { cls: "guild-h", text: "XP earned" }));
+      var ul = el("ul", { cls: "xp-log" });
+      done.forEach(function (q) { ul.appendChild(el("li", { text: (q.d.title || "Quest") + ": " + Number(q.d.xp).toLocaleString() + " XP" })); });
+      if (Number(guildState().bonusXp)) ul.appendChild(el("li", { text: "Other: " + Number(guildState().bonusXp).toLocaleString() + " XP" }));
+      box.appendChild(ul);
+    }
+
+    var lad = el("details", { cls: "ladder" }, [el("summary", { text: "THE CORPORATE LADDER" })]);
+    var ol = el("ol");
+    RANKS.forEach(function (r, i) { ol.appendChild(el("li", { cls: i + 1 === level ? "now" : "" }, [el("b", { text: String(i + 1) }), document.createTextNode(r)])); });
+    lad.appendChild(ol); box.appendChild(lad);
+  }
+
+  /* ---------- who's logged in ---------- */
+  function memberOf(uid) { return members.filter(function (m) { return m.user_id === uid; })[0] || null; }
+  function myProfile() { return myId ? memberOf(myId) : null; }
+  function profileName(uid) { var m = uid ? memberOf(uid) : null; return m ? m.name : ""; }
+  var renaming = false;
+  function renameMember(uid, v) {
+    v = String(v || "").trim().slice(0, 60); if (!v) return;
+    write(sb.from("members").update({ name: v }).eq("user_id", uid).select().then(function (r) {
+      if (r.error) throw codeErr(r.error); if (!r.data || !r.data.length) throw { code: "invalid_argument" };
+      return loadMembers();
+    }), "Name saved.");
+  }
+  function renderProfiles() {
+    var who = $("who"), admin = $("profile-admin");
+    who.textContent = ""; admin.textContent = ""; $("claim").hidden = true;
+    var me = myProfile();
+    if (!me) return;
+    if (renaming) {
+      var inp = el("input", { type: "text", id: "renameInput", maxlength: "60", "aria-label": "Your character's name" }); inp.value = me.name || ""; inp.style.width = "180px";
+      who.appendChild(inp);
+      who.appendChild(el("button", { cls: "btn small", type: "button", text: "Save", onclick: function () { renaming = false; renameMember(me.user_id, $("renameInput").value); } }));
+      who.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Cancel", onclick: function () { renaming = false; renderProfiles(); } }));
+    } else {
+      who.appendChild(el("span", { text: "Logged in as" }));
+      who.appendChild(el("span", { cls: "mono", "aria-hidden": "true", text: personInitial(me.name || "?") }));
+      who.appendChild(el("b", { text: me.name }));
+      who.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Rename", onclick: function () { renaming = true; renderProfiles(); } }));
+      who.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Log out", onclick: function () { sb.auth.signOut().then(function () { location.reload(); }); } }));
+    }
+    if (gm) {
+      var rows = el("div", { cls: "slots" });
+      members.slice().sort(function (a, b) { return (a.role === "gm" ? 0 : 1) - (b.role === "gm" ? 0 : 1) || a.username.localeCompare(b.username); }).forEach(function (m) {
+        var id = "mname-" + m.user_id;
+        var inp = el("input", { type: "text", id: id, maxlength: "60", "aria-label": "Character name for " + m.username }); inp.value = m.name;
+        rows.appendChild(el("div", { cls: "slot" }, [
+          el("span", { cls: "label", text: (m.role === "gm" ? "GM · " : "LOGIN · ") + m.username.toUpperCase() }),
+          inp,
+          el("button", { cls: "btn small ghost", type: "button", text: "Save name", onclick: function () { renameMember(m.user_id, $(id).value); } })
+        ]));
+      });
+      admin.appendChild(el("div", { cls: "gm-panel" }, [el("div", { cls: "label", text: "GM: LOGINS" }),
+        el("p", { cls: "section-intro", text: "Each login posts under its character's name. Add or remove logins, or reset passwords, in Supabase under Authentication > Users." }), rows]));
+    }
+  }
+
+  /* ---------- notes ---------- */
+  var canWriteNotes = null;
+  function renderNotes() {
+    var box = $("note-list");
+    if (!loaded.notes) { box.textContent = ""; box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    var list = state.notes.slice().sort(function (a, b) { return (b.d.at || 0) - (a.d.at || 0); });
+    if (!list.length) { box.textContent = ""; box.appendChild(el("div", { cls: "empty", text: "No notes yet. The first theory is always the wildest." })); return; }
+    var ids = []; list.forEach(function (n) { if (n.d.author && ids.indexOf(n.d.author) < 0) ids.push(n.d.author); });
+    var draw = function (profiles) {
+      box.textContent = "";
+      list.forEach(function (n) {
+        var d = n.d, p = profiles && d.author ? profiles[d.author] : null;
+        var when = d.at ? new Date(d.at).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "";
+        var mine = myId && d.author === myId;
+        var by = el("div", { cls: "by" }, [
+          el("span", { cls: "mono", "aria-hidden": "true", text: personInitial(profileName(d.author) || (p && p.name) || "?") }),
+          el("b", { text: profileName(d.author) || (p && p.name) || (mine ? "You" : "A party member") }),
+          el("span", { text: when }),
+          (mine || isOwner) ? el("button", { cls: "btn small danger del", type: "button", text: "Delete",
+            onclick: function () { write(db.collection("notes").doc(n.id).delete(), "Note deleted."); } }) : null
+        ]);
+        box.appendChild(el("article", { cls: "note" }, [by, el("p", { text: d.text || "" })]));
+      });
+    };
+    draw(null);
+  }
+
+  $("peopleSearch").addEventListener("input", function () { peopleQuery = $("peopleSearch").value; renderPeople(); });
+
+  $("compose").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var t = $("noteText").value.trim();
+    if (!t) { $("noteStatus").textContent = "Write something first."; return; }
+    if (!db || !myProfile()) { $("noteStatus").textContent = "Log in to post to the board."; return; }
+    $("notePost").disabled = true;
+    db.collection("notes").add({ text: t.slice(0, 4000), author: myId || null, at: Date.now() }).then(function () {
+      $("noteText").value = ""; $("noteStatus").textContent = "Posted.";
+    }, function (err) {
+      if (err && err.code === "invalid_argument") { $("noteStatus").textContent = "That post didn't go through. Try logging out and back in."; $("noteText").disabled = true; }
+      else $("noteStatus").textContent = "That note didn't save. Try again in a moment.";
+    }).then(function () { $("notePost").disabled = !!$("noteText").disabled; });
+  });
+
+  /* ---------- GM forms ---------- */
+  function buildForm(kind) {
+    var cfg = KINDS[kind], box = $("form-" + kind);
+    box.textContent = "";
+    var ed = editing[kind];
+    box.appendChild(el("summary", { text: ed ? "Editing: " + (ed.d.title || ed.d.name || "") : "Add a " + cfg.label }));
+    var form = el("form", { cls: "gm-form" });
+    var pair = null;
+    cfg.fields.forEach(function (f) {
+      var id = kind + "-f-" + f[0], input;
+      if (f[2] === "area") input = el("textarea", { id: id });
+      else if (f[2] === "select") { input = el("select", { id: id }); f[3].forEach(function (o) { input.appendChild(el("option", { value: o, text: o })); }); }
+      else input = el("input", { id: id, type: f[2] });
+      var v = ed ? ed.d[f[0]] : (f[0] === "order" ? "" : (f[0] === "status" ? "available" : ""));
+      if (v !== undefined && v !== null) input.value = v;
+      var wrap = el("div", null, [el("label", { cls: "label", "for": id, text: f[1] }), input]);
+      wrap.style.display = "grid"; wrap.style.gap = "4px";
+      if (f[2] === "area") { if (pair) { form.appendChild(pair); pair = null; } form.appendChild(wrap); }
+      else { if (!pair) pair = el("div", { cls: "two" }); pair.appendChild(wrap); if (pair.children.length === 2) { form.appendChild(pair); pair = null; } }
+    });
+    if (pair) form.appendChild(pair);
+    var rev = el("input", { type: "checkbox", id: kind + "-f-revealed" });
+    rev.checked = ed ? !!ed.d.revealed : false;
+    form.appendChild(el("label", { cls: "toggle", "for": kind + "-f-revealed" }, [rev, document.createTextNode("Visible to players")]));
+    var buttons = el("div", { cls: "row" }, [
+      el("span", null, [ed ? el("button", { cls: "btn danger", type: "button", text: "Delete", onclick: function () { write(db.collection(kind).doc(ed.id).delete(), "Deleted."); editing[kind] = null; buildForm(kind); } }) : null]),
+      el("span", { cls: "row" }, [
+        ed ? el("button", { cls: "btn ghost", type: "button", text: "Cancel", onclick: function () { editing[kind] = null; buildForm(kind); } }) : null,
+        el("button", { cls: "btn", type: "submit", text: ed ? "Save changes" : "Add " + cfg.label })
+      ])
+    ]);
+    form.appendChild(buttons);
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var body = {};
+      cfg.fields.forEach(function (f) {
+        var v = $(kind + "-f-" + f[0]).value;
+        if (f[2] === "number") { body[f[0]] = v === "" ? 999 : Number(v); }
+        else body[f[0]] = v.trim();
+      });
+      body.revealed = rev.checked;
+      var key = kind === "quests" ? "title" : "name";
+      if (!body[key]) { setStatus("Give it a " + (key === "title" ? "title" : "name") + " first."); return; }
+      if (ed) {
+        write(db.collection(kind).doc(ed.id).update(body), "Saved.");
+      } else {
+        write(db.collection(kind).add(body), "Added.");
+      }
+      editing[kind] = null; buildForm(kind);
+    });
+    box.appendChild(form);
+    if (ed) box.open = true;
+  }
+  function startEdit(kind, item) { editing[kind] = item; buildForm(kind); $("form-" + kind).scrollIntoView({ block: "start", behavior: "smooth" }); }
+
+  function write(promise, okMsg) {
+    setStatus("Saving…");
+    return promise.then(function () { setStatus(okMsg); setTimeout(function () { if ($("status").textContent === okMsg) setStatus(""); }, 2500); },
+      function (err) {
+        if (err && err.code === "invalid_argument") setStatus("Only the GM can change the ledger.");
+        else setStatus("That change didn't save. Try again in a moment.");
+      });
+  }
+
+  /* ---------- Supabase data layer ---------- */
+  function codeErr(e) {
+    var msg = (e && e.message) || "";
+    var denied = (e && (e.code === "42501" || e.code === "PGRST301")) || /row-level security|permission denied/i.test(msg);
+    return { code: denied ? "invalid_argument" : "other", message: msg };
+  }
+  function current(c, id) { var x = (state[c] || []).filter(function (r) { return r.id === id; })[0]; return x ? x.d : null; }
+  function newId() { try { return crypto.randomUUID(); } catch (e) { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); } }
+  function checked(c) {
+    return function (r) {
+      if (r.error) throw codeErr(r.error);
+      if (Array.isArray(r.data) && !r.data.length) throw { code: "invalid_argument" };
+      return refetch(c);
+    };
+  }
+  function makeDb() {
+    return {
+      collection: function (c) {
+        var api = {
+          doc: function (id) {
+            var q = function (b) { return b.eq("collection", c).eq("id", id); };
+            return {
+              set: function (data) {
+                if (current(c, id)) return q(sb.from("docs").update({ data: data })).select("id").then(checked(c));
+                return sb.from("docs").insert({ collection: c, id: id, data: data }).select("id").then(checked(c));
+              },
+              update: function (patch) {
+                var merged = Object.assign({}, current(c, id) || {}, patch);
+                return q(sb.from("docs").update({ data: merged })).select("id").then(checked(c));
+              },
+              delete: function () { return q(sb.from("docs").delete()).select("id").then(checked(c)); }
+            };
+          },
+          add: function (data) { return api.doc(newId()).set(data); }
+        };
+        return api;
+      }
+    };
+  }
+  var pending = {};
+  function refetch(c) {
+    return sb.from("docs").select("id,data").eq("collection", c).then(function (r) {
+      if (r.error) throw codeErr(r.error);
+      state[c] = (r.data || []).map(function (x) { return { id: x.id, d: x.data || {} }; });
+      loaded[c] = true;
+      if (activePlace && c === "places" && !state.places.some(function (p) { return p.id === activePlace; })) activePlace = null;
+      render();
+    });
+  }
+  function refetchSoon(c) {
+    if (pending[c]) return;
+    pending[c] = setTimeout(function () { pending[c] = null; (c === "members" ? loadMembers() : refetch(c)).catch(function () {}); }, 150);
+  }
+  function loadMembers() {
+    return sb.from("members").select("user_id,username,name,role").then(function (r) {
+      if (r.error) throw codeErr(r.error);
+      members = r.data || []; loaded.members = true; render();
+    });
+  }
+  function refreshAll() { return Promise.all([loadMembers()].concat(COLLECTIONS.map(refetch))); }
+
+  /* ---------- boot ---------- */
+  render();
+  var CFG = window.LEDGER_CONFIG || {};
+  function showLogin(msg) { $("app").hidden = true; $("login").hidden = false; $("loginStatus").textContent = msg || ""; }
+  if (!window.supabase || !CFG.supabaseUrl || /PASTE/.test(CFG.supabaseUrl + CFG.supabaseAnonKey)) {
+    showLogin(window.supabase ? "This ledger isn't connected to its database yet. Add the Supabase details at the top of index.html." : "Couldn't load the login library. Check your connection and reload.");
+    $("loginBtn").disabled = true;
+    return;
+  }
+  sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+
+  $("loginForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var u = $("loginUser").value.trim(), p = $("loginPass").value;
+    if (!u || !p) { $("loginStatus").textContent = "Enter your username and password."; return; }
+    var email = u.indexOf("@") >= 0 ? u : u.toLowerCase().replace(/\s+/g, "") + "@" + (CFG.loginDomain || "ledger.example.com");
+    $("loginBtn").disabled = true; $("loginStatus").textContent = "Checking the guild register…";
+    sb.auth.signInWithPassword({ email: email, password: p }).then(function (r) {
+      $("loginBtn").disabled = false;
+      if (r.error) { $("loginStatus").textContent = /invalid/i.test(r.error.message) ? "That username and password don't match." : "Couldn't log in: " + r.error.message; return; }
+      $("loginPass").value = "";
+      start(r.data.session);
+    });
+  });
+
+  var started = false;
+  function start(session) {
+    if (started || !session) return; started = true;
+    myId = session.user.id;
+    db = makeDb();
+    $("login").hidden = true; $("app").hidden = false;
+    setStatus("Opening the ledger…");
+    loadMembers().then(function () {
+      var me = myProfile();
+      if (!me) { setStatus("This login isn't on the guild register. Ask the GM."); return; }
+      isOwner = me.role === "gm";
+      if (isOwner) {
+        $("gmToggleWrap").hidden = false;
+        var saved = false; try { saved = localStorage.getItem("ledger-gm") === "1"; } catch (e) {}
+        $("gmToggle").checked = saved; gm = saved;
+        $("gmToggle").addEventListener("change", function () { gm = $("gmToggle").checked; try { localStorage.setItem("ledger-gm", gm ? "1" : "0"); } catch (e) {} pinFor = null; render(); });
+        ["quests", "people", "places"].forEach(buildForm);
+      }
+      return Promise.all(COLLECTIONS.map(refetch)).then(function () { setStatus(""); });
+    }).catch(function () { setStatus("Couldn't open the ledger. Reload the page to try again."); COLLECTIONS.forEach(function (k) { loaded[k] = true; }); render(); });
+
+    sb.channel("ledger")
+      .on("postgres_changes", { event: "*", schema: "public", table: "docs" }, function (p) {
+        var c = (p.new && p.new.collection) || (p.old && p.old.collection);
+        if (c && COLLECTIONS.indexOf(c) >= 0) refetchSoon(c); else COLLECTIONS.forEach(refetchSoon);
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "members" }, function () { refetchSoon("members"); })
+      .subscribe();
+    // Catch anything live updates miss (like the GM hiding something again).
+    setInterval(function () { if (!document.hidden) refreshAll().catch(function () {}); }, 60000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) refreshAll().catch(function () {}); });
+  }
+
+  sb.auth.getSession().then(function (r) {
+    var s = r && r.data && r.data.session;
+    if (s) start(s); else showLogin("");
+  });
+  sb.auth.onAuthStateChange(function (ev) { if (ev === "SIGNED_OUT") { location.reload(); } });
+})();
+</script>
+</body>
+</html>
