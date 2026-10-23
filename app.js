@@ -286,51 +286,12 @@
   var SVGNS = "http://www.w3.org/2000/svg";
   function s(tag, attrs) { var n = document.createElementNS(SVGNS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
   var chartBase = null;
+  var MAP_W = 1000, MAP_H = 750; // map.jpg is 4:3; pins are stored in these chart units
   function drawBase(svg) {
-    // shapes are drawn west-sea and mirrored so the sea lies east of town; labels stay unmirrored
-    var g = s("g", { transform: "translate(1000 0) scale(-1 1)" });
-    var gl = s("g", {});
-    g.appendChild(s("rect", { x: 0, y: 0, width: 1000, height: 680, fill: "var(--land)" }));
-    // jungle mass (east)
-    g.appendChild(s("path", { d: "M640 0 H1000 V420 C930 410 880 360 820 360 C760 360 720 300 690 250 C660 200 600 170 610 110 C618 60 640 30 640 0 Z", fill: "var(--kelp)", opacity: ".35" }));
-    for (var i = 0; i < 46; i++) {
-      var x = 660 + (i * 73) % 330, y = 20 + ((i * 131) % 360);
-      if (y > 330 && x < 820) continue;
-      g.appendChild(s("circle", { cx: x, cy: y, r: 14 + (i % 4) * 3, fill: "var(--kelp)", opacity: ".28" }));
-    }
-    // Torun's Spine (south-east ridge)
-    var ridge = "M520 680 L560 600 L600 640 L650 540 L700 610 L750 500 L800 580 L850 470 L900 560 L960 450 L1000 520 V680 Z";
-    g.appendChild(s("path", { d: ridge, fill: "var(--muted)", opacity: ".28" }));
-    g.appendChild(s("path", { d: "M560 600 L600 640 M650 540 L700 610 M750 500 L800 580 M850 470 L900 560 M960 450 L1000 520", stroke: "var(--muted)", "stroke-width": 2, fill: "none", opacity: ".5" }));
-    // sea (west) with the cove
-    var sea = "M0 0 H250 C280 120 260 220 300 300 C330 360 400 370 400 420 C400 480 320 500 290 560 C270 610 250 650 240 680 H0 Z";
-    g.appendChild(s("path", { d: "M0 0 H262 C292 120 272 220 312 300 C342 360 414 370 414 420 C414 486 332 506 302 566 C282 616 262 656 252 680 H0 Z", fill: "var(--sand)" }));
-    g.appendChild(s("path", { d: sea, fill: "var(--sea-soft)" }));
-    for (var w = 0; w < 9; w++) g.appendChild(s("path", { d: "M" + (40 + (w % 3) * 70) + " " + (70 + w * 68) + " q12 -8 24 0 t24 0", stroke: "var(--sea)", "stroke-width": 2, fill: "none", opacity: ".45" }));
-    // river from jungle to cove
-    g.appendChild(s("path", { d: "M1000 300 C900 300 860 260 780 290 C700 320 640 300 580 340 C520 380 460 380 400 405", stroke: "var(--sea)", "stroke-width": 9, fill: "none", opacity: ".55", "stroke-linecap": "round" }));
-    // coastal road north
-    g.appendChild(s("path", { d: "M470 400 C460 320 420 250 400 170 C385 110 360 50 350 0", stroke: "var(--muted)", "stroke-width": 3, "stroke-dasharray": "9 7", fill: "none", opacity: ".7" }));
-    // town blocks
-    [[440, 420, 34, 22], [486, 440, 28, 20], [452, 456, 26, 18], [500, 405, 30, 20], [525, 445, 24, 18], [470, 480, 30, 18]].forEach(function (b) {
-      g.appendChild(s("rect", { x: b[0], y: b[1], width: b[2], height: b[3], rx: 2, fill: "var(--card)", stroke: "var(--ink)", "stroke-width": 1.5, opacity: ".85" }));
-    });
-    // pier
-    g.appendChild(s("rect", { x: 330, y: 436, width: 92, height: 9, fill: "var(--ink)", opacity: ".55" }));
-    // labels
-    function lab(x, y, t, size, italic) { var n = s("text", { x: x, y: y, "text-anchor": "middle", fill: "var(--muted)", "font-family": "IM Fell English, Georgia, serif", "font-size": size, "font-style": italic ? "italic" : "normal", opacity: ".85" }); n.setAttribute("x", 1000 - x); n.textContent = t; gl.appendChild(n); }
-    lab(120, 340, "The Sea", 30, true);
-    lab(360, 30, "to Crabbe's Hollow", 16, true);
-    lab(860, 40, "the jungle", 18, true);
-    lab(800, 660, "the mountains", 18, true);
-    // compass
-    var c = s("g", { transform: "translate(930 610)", opacity: ".8" });
-    c.appendChild(s("circle", { r: 30, fill: "none", stroke: "var(--ink)", "stroke-width": 1.5 }));
-    c.appendChild(s("path", { d: "M0 -26 L7 0 L0 26 L-7 0 Z", fill: "var(--accent)" }));
-    var nl = s("text", { x: 0, y: -34, "text-anchor": "middle", "font-family": "Alegreya Sans SC, sans-serif", "font-size": 14, fill: "var(--ink)" }); nl.textContent = "N"; c.appendChild(nl);
-    gl.appendChild(c);
+    var g = s("g", {});
+    g.appendChild(s("rect", { x: 0, y: 0, width: MAP_W, height: MAP_H, fill: "var(--land)" }));
+    g.appendChild(s("image", { href: "map.jpg?v=1", x: 0, y: 0, width: MAP_W, height: MAP_H, preserveAspectRatio: "xMidYMid slice" }));
     svg.appendChild(g);
-    svg.appendChild(gl);
     chartBase = g;
   }
 
