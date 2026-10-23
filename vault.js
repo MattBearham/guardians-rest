@@ -5,7 +5,8 @@
   // Notes are picked up by their tags (or `ledger: quest|character|location`). Vault notes are GM notes,
   // so only player-safe parts are read: frontmatter (a character's tagline is their role), the quest board notice,
   // a "Player summary" section, and `ledger-<field>` overrides. New entries arrive hidden; GM-only state (revealed, log, pins) is kept.
-  var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places" };
+  // Session recaps (tag `recap`) become one timeline entry each: the bullets under "## Timeline", with the notes each one links.
+  var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places", recap: "timeline", "session-recap": "timeline" };
   function fmValue(v) {
     v = String(v).trim();
     var q = /^(["'])(.*)\1$/.exec(v);
@@ -44,14 +45,28 @@
       .replace(/[ \t]+$/gm, "")
       .trim();
   }
-  function sectionText(body, re) {
+  function sectionRaw(body, re) {
     var lines = body.split("\n"), out = null, level = 0;
     for (var i = 0; i < lines.length; i++) {
       var h = /^(#{1,6})\s+(.*?)\s*$/.exec(lines[i]);
       if (out) { if (h && h[1].length <= level) break; out.push(lines[i]); }
       else if (h && re.test(plain(h[2]))) { out = []; level = h[1].length; }
     }
-    return out ? plain(out.join("\n")).replace(/\n{3,}/g, "\n\n") : "";
+    return out ? out.join("\n") : "";
+  }
+  function sectionText(body, re) { return plain(sectionRaw(body, re)).replace(/\n{3,}/g, "\n\n"); }
+  // One event per top-level bullet (indented lines fold into it); `links` are the note names it [[links]], minus embeds.
+  function timelineEvents(raw) {
+    var items = [];
+    raw.split("\n").forEach(function (line) {
+      var top = /^[-*+]\s+(.*)$/.exec(line), more = /^\s+(?:[-*+]\s+)?(.*\S)/.exec(line);
+      if (top) items.push(top[1]); else if (more && items.length) items[items.length - 1] += " " + more[1];
+    });
+    return items.map(function (s) {
+      var links = [];
+      s.replace(/(!?)\[\[([^\]|#]*)[^\]]*\]\]/g, function (m, embed, t) { t = t.trim(); if (!embed && t && links.indexOf(t) < 0) links.push(t); return m; });
+      return { text: plain(s), links: links };
+    }).filter(function (e) { return e.text; });
   }
   function vaultEntry(path, text, kinds) {
     var n = parseNote(text), fm = n.fm, body = n.body;
@@ -75,6 +90,11 @@
         if (rm) { soft.reward = rm[2].replace(/\.$/, "").trim(); notice = notice.slice(0, rm.index).trim(); }
         if (notice) soft.summary = notice;
       }
+    } else if (kind === "timeline") {
+      if (typeof fm.session === "number") f.session = fm.session;
+      f.title = plain(fm.title) || (f.session ? "Session " + f.session : note);
+      f.events = timelineEvents(sectionRaw(body, /^timeline$/i));
+      if (!f.events.length) return { skip: "recap has no bullets under ## Timeline" };
     } else {
       f.name = note;
       if (kind === "people" && first(fm.location)) f.where = first(fm.location);
@@ -86,7 +106,7 @@
     Object.keys(fm).forEach(function (k) {
       var m = /^ledger-(.+)$/.exec(k); if (!m) return;
       var name = m[1] === "name" && kind === "quests" ? "title" : m[1];
-      var spec = kinds[kind].fields.filter(function (x) { return x[0] === name; })[0];
+      var spec = kinds[kind] && kinds[kind].fields.filter(function (x) { return x[0] === name; })[0];
       if (!spec || fm[k] === "") return;
       var v = spec[2] === "number" ? Number(fm[k]) : [].concat(fm[k]).map(plain).join(", ");
       if (spec[2] === "number" ? isNaN(v) : !v) return;
@@ -95,6 +115,6 @@
     });
     return { kind: kind, note: note, path: path, fields: f, soft: soft };
   }
-  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, entry: vaultEntry };
+  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, timelineEvents: timelineEvents, entry: vaultEntry };
   if (typeof module !== "undefined" && module.exports) module.exports = Vault; else root.Vault = Vault;
 })(this);

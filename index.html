@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans+SC:wght@500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=1">
+<link rel="stylesheet" href="style.css?v=2">
 </head>
 <body>
 
@@ -50,6 +50,7 @@
 
   <nav role="tablist" aria-label="Ledger sections">
     <button role="tab" id="tab-guild" data-tab="guild" aria-selected="true">The guild</button>
+    <button role="tab" id="tab-timeline" data-tab="timeline" aria-selected="false">Timeline<span class="count" id="c-timeline"></span></button>
     <button role="tab" id="tab-quests" data-tab="quests" aria-selected="false">Quest log<span class="count" id="c-quests"></span></button>
     <button role="tab" id="tab-people" data-tab="people" aria-selected="false">People<span class="count" id="c-people"></span></button>
     <button role="tab" id="tab-places" data-tab="places" aria-selected="false">Places<span class="count" id="c-places"></span></button>
@@ -62,6 +63,11 @@
 
   <section id="guild" role="tabpanel" aria-labelledby="tab-guild">
     <div id="guild-body"></div>
+  </section>
+
+  <section id="timeline" role="tabpanel" aria-labelledby="tab-timeline" hidden>
+    <p class="section-intro">The story so far: the moments that mattered in each session, and who and where they involved. Tap a name to follow just their thread.</p>
+    <div id="timeline-list"></div>
   </section>
 
   <section id="quests" role="tabpanel" aria-labelledby="tab-quests" hidden>
@@ -101,7 +107,7 @@
 </div>
 
 <script src="kinds.js?v=1"></script>
-<script src="vault.js?v=1"></script>
-<script src="app.js?v=1"></script>
+<script src="vault.js?v=2"></script>
+<script src="app.js?v=2"></script>
 </body>
 </html>

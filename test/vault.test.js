@@ -56,6 +56,38 @@ test("ledger: <kind> picks the type when tags don't", () => {
   assert.equal(entry("x/Finn.md", "---\nledger: character\n---\n").kind, "people");
 });
 
+test("recap: one timeline entry per session, with each moment's links", () => {
+  const e = entry("Sessions/Session 1 - Recap.md", [
+    "---", "tags: [recap]", "session: 1", 'title: "The Hundredth Signature"', "---",
+    "## Player summary", "", "The guild arrived and won the town's hundredth signature.", "",
+    "## Timeline", "",
+    "- The party sailed into the cove with [[Alak'Kith Swiftfoot|Alak'Kith]].",
+    "- [[Marina Sealegs Saltmarsh|Marina]] met them at [[The Pier]] and started",
+    "  [[Census Assistance Required|the census job]]. ![[census.png]]",
+    "- They took a crab hostage for [[Agatha Windham#Mittens|Agatha]], and [[Agatha Windham]] signed.",
+    "", "## For the GM", "", "- [[Someone Unmatched]] needs a note"
+  ].join("\n"));
+  assert.equal(e.kind, "timeline");
+  assert.deepEqual(e.fields, {
+    session: 1, title: "The Hundredth Signature",
+    summary: "The guild arrived and won the town's hundredth signature.",
+    events: [
+      { text: "The party sailed into the cove with Alak'Kith.", links: ["Alak'Kith Swiftfoot"] },
+      { text: "Marina met them at The Pier and started the census job.", links: ["Marina Sealegs Saltmarsh", "The Pier", "Census Assistance Required"] },
+      { text: "They took a crab hostage for Agatha, and Agatha Windham signed.", links: ["Agatha Windham"] }
+    ]
+  });
+});
+
+test("recap: falls back to 'Session N' for the title; no bullets means skip", () => {
+  assert.equal(entry("x/R.md", "---\ntags: [recap]\nsession: 4\n---\n## Timeline\n- Something happened.\n").fields.title, "Session 4");
+  assert.deepEqual(entry("x/R.md", "---\ntags: [recap]\nsession: 4\n---\n## Timeline\n\nTBD\n"), { skip: "recap has no bullets under ## Timeline" });
+});
+
+test("session plans (tag session) are not recaps", () => {
+  assert.equal(entry("Sessions/Session 1 - Plan.md", "---\ntags: [session]\nsession: 1\n---\n## Timeline\n- planned beat\n"), null);
+});
+
 const vaultDir = process.env.VAULT_DIR;
 test("every tagged note in VAULT_DIR parses", { skip: !vaultDir && "set VAULT_DIR to check a real vault" }, () => {
   const files = [];
@@ -66,7 +98,7 @@ test("every tagged note in VAULT_DIR parses", { skip: !vaultDir && "set VAULT_DI
       if (fs.statSync(p).isDirectory()) walk(p); else if (/\.md$/i.test(f)) files.push(p);
     }
   })(vaultDir);
-  const counts = { quests: 0, people: 0, places: 0 };
+  const counts = { quests: 0, people: 0, places: 0, timeline: 0 };
   for (const p of files) {
     const e = entry(p.split(path.sep).join("/"), fs.readFileSync(p, "utf8"));
     if (!e || e.skip) continue;
@@ -78,5 +110,5 @@ test("every tagged note in VAULT_DIR parses", { skip: !vaultDir && "set VAULT_DI
     }
   }
   console.log("Vault notes:", counts);
-  assert.ok(counts.quests + counts.people + counts.places > 0, "no tagged notes found");
+  assert.ok(counts.quests + counts.people + counts.places + counts.timeline > 0, "no tagged notes found");
 });

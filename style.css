@@ -169,6 +169,28 @@ section[hidden] { display: none !important; }
 .ladder li.now b { color: var(--accent); }
 .xp-log { font-size: 15px; color: var(--muted); margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
 
+/* timeline */
+.tl-bar { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-bottom: 22px; }
+.tl-bar select { width: auto; max-width: 100%; }
+.session { position: relative; padding-left: 30px; padding-bottom: 26px; display: grid; gap: 10px; min-width: 0; }
+.session::before { content: ""; position: absolute; left: 7px; top: 12px; bottom: 0; width: 2px; background: var(--line); }
+.session:last-child::before { bottom: auto; height: 0; }
+.session > h2 { position: relative; font-size: 26px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+.session > h2::before { content: ""; position: absolute; left: -30px; top: .3em; width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 3px solid var(--accent); box-sizing: border-box; }
+.session > h2 .label { font-size: 12px; }
+.session.is-hidden { border-style: none; }
+.tl-summary { margin: 0; color: var(--muted); font-style: italic; max-width: 68ch; }
+.moments { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.moments li { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 12px 16px; min-width: 0; }
+.moments p { margin: 0; max-width: 68ch; overflow-wrap: anywhere; }
+.links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.link-chip { font: 700 12px/1 var(--f-label); letter-spacing: .05em; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 3px; padding: 6px 9px; cursor: pointer; }
+.link-chip.k-people { border-left-color: var(--accent); }
+.link-chip.k-places { border-left-color: var(--sea); }
+.link-chip.k-quests { border-left-color: var(--kelp); }
+.link-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.tl-btn { justify-self: start; }
+
 /* notes */
 .compose { display: grid; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px; margin-bottom: 20px; }
 textarea, input[type="text"], input[type="number"], input[type="password"], select { width: 100%; font: 16px/1.45 var(--f-body); color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 3px; padding: 9px 11px; }
