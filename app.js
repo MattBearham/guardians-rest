@@ -706,7 +706,7 @@
       });
   }
 
-  var sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false };
+  var sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false, keep: {} };
   function nameOf(it) { return String(it.d.title || it.d.name || ""); }
   function matchRows() {
     var claimed = {};
@@ -745,7 +745,7 @@
     var ep = epoch;
     Promise.all(mds.map(function (f) { return f.text().then(function (t) { return Vault.entry(f.webkitRelativePath || f.name, t, KINDS); }); })).then(function (entries) {
       if (ep !== epoch) return;
-      var seen = {}; sync.rows = []; sync.skipped = []; sync.ignored = 0;
+      var seen = {}; sync.rows = []; sync.skipped = []; sync.ignored = 0; sync.keep = {};
       entries.forEach(function (e, i) {
         var path = mds[i].webkitRelativePath || mds[i].name;
         if (!e) { sync.ignored++; return; }
@@ -758,29 +758,46 @@
       $("vault-sync").scrollIntoView({ block: "start", behavior: "smooth" });
     }, function () { setStatus("Couldn't read those notes. Try picking the folder again."); });
   }
+  // The vault is the source of truth: an entry no vault note matches is deleted, but only for types the picked
+  // folder has notes for, so picking just the Quests folder can't wipe people, places or the timeline.
+  var SYNCED = ["quests", "people", "places", "timeline"];
+  function syncedKinds() { var k = {}; sync.rows.forEach(function (r) { k[r.kind] = true; }); return k; }
+  function staleEntries() {
+    var kinds = syncedKinds(), matched = {}, out = [];
+    sync.rows.forEach(function (r) { if (r.match) matched[r.match] = true; });
+    SYNCED.forEach(function (k) { if (kinds[k]) state[k].forEach(function (it) { if (!matched[it.id]) out.push({ kind: k, item: it }); }); });
+    return out;
+  }
   function applySync() {
     var todo = sync.rows.filter(function (r) { var ch = rowChanges(r); return r.on && (!ch || ch.length); });
-    if (!todo.length || sync.busy) return;
+    var gone = staleEntries().filter(function (x) { return !sync.keep[x.item.id]; });
+    if ((!todo.length && !gone.length) || sync.busy) return;
     sync.busy = true; renderSync(); setStatus("Syncing from Obsidian…");
     var ep = epoch, inserts = [], jobs = [];
+    function job(type, n, p) { jobs.push({ type: type, n: n, p: p }); }
     todo.forEach(function (r) {
       var x = rowData(r);
       var base = x.cur || Object.assign(r.kind === "quests" ? { status: "available" } : {}, { order: 999, revealed: sync.reveal });
       var data = Object.assign({}, base, x.fields, { vaultNote: r.note });
-      if (x.cur) jobs.push(sb.from("docs").update({ data: data }).eq("collection", r.kind).eq("id", r.match).select("id").then(function (res) {
+      if (x.cur) job("updated", 1, sb.from("docs").update({ data: data }).eq("collection", r.kind).eq("id", r.match).select("id").then(function (res) {
         if (res.error) throw codeErr(res.error); if (!res.data || !res.data.length) throw { code: "invalid_argument" };
       }));
       else inserts.push({ collection: r.kind, id: newId(), data: data });
     });
-    if (inserts.length) jobs.push(sb.from("docs").insert(inserts).select("id").then(function (res) { if (res.error) throw codeErr(res.error); }));
-    Promise.allSettled(jobs).then(function (rs) {
+    if (inserts.length) job("added", inserts.length, sb.from("docs").insert(inserts).select("id").then(function (res) { if (res.error) throw codeErr(res.error); }));
+    SYNCED.forEach(function (k) {
+      var ids = gone.filter(function (x) { return x.kind === k; }).map(function (x) { return x.item.id; });
+      if (ids.length) job("removed", ids.length, sb.from("docs").delete().eq("collection", k).in("id", ids).select("id").then(function (res) {
+        if (res.error) throw codeErr(res.error); if ((res.data || []).length !== ids.length) throw { code: "invalid_argument" };
+      }));
+    });
+    Promise.allSettled(jobs.map(function (j) { return j.p; })).then(function (rs) {
       if (ep !== epoch) return;
-      var failed = rs.filter(function (x) { return x.status === "rejected"; }).length;
-      var insFailed = inserts.length && rs[rs.length - 1].status === "rejected";
-      var added = insFailed ? 0 : inserts.length, updated = jobs.length - (inserts.length ? 1 : 0) - (failed - (insFailed ? 1 : 0));
-      return Promise.all(["quests", "people", "places", "timeline"].map(refetch)).then(function () {
-        sync.busy = false; matchRows(); render();
-        setStatus("Synced from Obsidian: " + added + " added, " + updated + " updated." + (failed ? " Some changes didn't save; try again." : ""));
+      var done = { added: 0, updated: 0, removed: 0 }, failed = 0;
+      rs.forEach(function (r, i) { if (r.status === "fulfilled") done[jobs[i].type] += jobs[i].n; else failed++; });
+      return Promise.all(SYNCED.map(refetch)).then(function () {
+        sync.busy = false; sync.keep = {}; matchRows(); render();
+        setStatus("Synced from Obsidian: " + done.added + " added, " + done.updated + " updated, " + done.removed + " removed." + (failed ? " Some changes didn't save; try again." : ""));
       });
     }).catch(function () { sync.busy = false; renderSync(); setStatus("The sync didn't finish. Try again in a moment."); });
   }
@@ -790,7 +807,7 @@
     box.appendChild(el("summary", { text: "Sync from Obsidian" }));
     var wrap = el("div", { cls: "gm-form" });
     box.appendChild(wrap);
-    wrap.appendChild(el("p", { cls: "section-intro", text: "Pick your vault folder to add or update quests, characters and locations from notes tagged quest, character or location, and the timeline from session recaps tagged recap. Nothing is uploaded until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
+    wrap.appendChild(el("p", { cls: "section-intro", text: "Pick your vault folder to add or update quests, characters and locations from notes tagged quest, character or location, and the timeline from session recaps tagged recap. The ledger then matches the vault: anything with no note there is removed (reveals, pins and logs are kept for everything else). Nothing changes until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
     var pick = el("input", { type: "file", id: "vaultPick", "aria-label": "Obsidian vault folder", onchange: function () { readVault(pick.files); } });
     pick.setAttribute("webkitdirectory", ""); pick.multiple = true;
     if (!loaded.quests || !loaded.people || !loaded.places || !loaded.timeline) pick.disabled = true;
@@ -837,12 +854,34 @@
       sync.skipped.forEach(function (s) { kd.appendChild(el("div", { cls: "sync-row" }, [el("span"), el("div", { cls: "sub", text: s.path + ": " + s.why })])); });
       wrap.appendChild(kd);
     }
+    var stale = staleEntries();
+    if (stale.length) {
+      wrap.appendChild(el("h3", { cls: "sync-h", text: "REMOVED · NOT IN THE VAULT · " + stale.length }));
+      var rl = el("div", { cls: "sync-list" });
+      stale.forEach(function (x) {
+        var d = x.item.d, cb = el("input", { type: "checkbox", "aria-label": "Remove " + (nameOf(x.item) || "this entry") });
+        cb.checked = !sync.keep[x.item.id]; cb.disabled = sync.busy;
+        cb.addEventListener("change", function () { if (cb.checked) delete sync.keep[x.item.id]; else sync.keep[x.item.id] = true; renderSync(); });
+        var notes = [d.vaultNote ? "Its vault note is gone or renamed" : "Added in the ledger, not from the vault"];
+        if (d.revealed) notes.push("players can see it");
+        if (d.log && d.log.length) notes.push(d.log.length + (d.log.length === 1 ? " logged interaction goes too" : " logged interactions go too"));
+        if (x.kind === "quests" && d.status === "completed" && Number(d.xp)) notes.push("guild XP drops by " + Number(d.xp).toLocaleString());
+        rl.appendChild(el("label", { cls: "sync-row" }, [cb, el("div", null, [
+          el("div", null, [el("span", { cls: "label", text: LABEL[x.kind] + " · " }), el("b", { text: nameOf(x.item) || "Untitled" })]),
+          el("div", { cls: "sub", text: notes.join(" · ") })
+        ])]));
+      });
+      wrap.appendChild(rl);
+    }
+    var kinds = syncedKinds(), NAMES = { quests: "quests", people: "people", places: "places", timeline: "timeline sessions" };
+    var untouched = SYNCED.filter(function (k) { return !kinds[k]; }).map(function (k) { return NAMES[k]; });
+    if (untouched.length) wrap.appendChild(el("p", { cls: "status-line", text: "No notes for " + untouched.join(", ") + " in this folder, so those are left as they are." }));
     if (sync.ignored) wrap.appendChild(el("p", { cls: "status-line", text: sync.ignored + " other notes (lore, sessions, handouts and so on) were ignored." }));
 
     var rev = el("input", { type: "checkbox", id: "syncReveal" }); rev.checked = sync.reveal; rev.disabled = sync.busy;
     rev.addEventListener("change", function () { sync.reveal = rev.checked; renderSync(); });
-    var n = sync.rows.filter(function (r) { return r.on && (!r.changes || r.changes.length); }).length;
-    var clear = el("button", { cls: "btn ghost", type: "button", text: "Clear", onclick: function () { sync.rows = []; sync.skipped = []; sync.ignored = 0; renderSync(); } });
+    var n = sync.rows.filter(function (r) { return r.on && (!r.changes || r.changes.length); }).length + stale.filter(function (x) { return !sync.keep[x.item.id]; }).length;
+    var clear = el("button", { cls: "btn ghost", type: "button", text: "Clear", onclick: function () { sync.rows = []; sync.skipped = []; sync.ignored = 0; sync.keep = {}; renderSync(); } });
     var go = el("button", { cls: "btn", type: "button", text: sync.busy ? "Syncing…" : n ? "Apply " + n + (n === 1 ? " change" : " changes") : "Nothing to apply", onclick: applySync });
     clear.disabled = sync.busy; go.disabled = sync.busy || !n;
     wrap.appendChild(el("div", { cls: "row" }, [
@@ -1018,7 +1057,7 @@
     ballotError = false;
     $("gmToggleWrap").hidden = true; $("gmToggle").checked = false;
     ["quests", "people", "places"].forEach(function (k) { $("form-" + k).textContent = ""; });
-    sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false }; $("vault-sync").textContent = "";
+    sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false, keep: {} }; $("vault-sync").textContent = "";
     setStatus(""); render();
     showLogin(msg);
   }
