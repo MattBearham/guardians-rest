@@ -1,0 +1,100 @@
+// Turns an Obsidian note into ledger fields. No DOM or Supabase here, so it runs in Node for tests (see test/vault.test.js).
+(function (root) {
+  "use strict";
+  /* ---------- Obsidian sync ---------- */
+  // Notes are picked up by their tags (or `ledger: quest|character|location`). Vault notes are GM notes,
+  // so only player-safe parts are read: frontmatter (a character's tagline is their role), the quest board notice,
+  // a "Player summary" section, and `ledger-<field>` overrides. New entries arrive hidden; GM-only state (revealed, log, pins) is kept.
+  var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places" };
+  function fmValue(v) {
+    v = String(v).trim();
+    var q = /^(["'])(.*)\1$/.exec(v);
+    if (q) return q[2];
+    if (v.slice(0, 2) === "[[") return v;
+    if (/^\[.*\]$/.test(v)) return v.slice(1, -1).split(",").map(fmValue).filter(function (x) { return x !== ""; });
+    if (/^(true|false)$/i.test(v)) return v.toLowerCase() === "true";
+    if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+    return v;
+  }
+  function parseNote(text) {
+    text = String(text).replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+    var fm = {}, body = text, m = /^---\n([\s\S]*?)\n---[ \t]*(\n|$)/.exec(text);
+    if (m) {
+      body = text.slice(m[0].length);
+      var key = null;
+      m[1].split("\n").forEach(function (line) {
+        var item = /^\s*-\s+(.*)$/.exec(line), kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
+        if (item && key) { if (!Array.isArray(fm[key])) fm[key] = []; fm[key].push(fmValue(item[1])); }
+        else if (kv) { key = kv[1].toLowerCase(); fm[key] = kv[2].trim() === "" ? "" : fmValue(kv[2]); }
+      });
+    }
+    return { fm: fm, body: body.replace(/%%[\s\S]*?%%|<!--[\s\S]*?-->/g, "") };
+  }
+  function plain(s) {
+    return String(s == null ? "" : s)
+      .replace(/!\[\[[^\]]*\]\]|!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, "$2")
+      .replace(/\[\[([^\]]*)\]\]/g, function (m, t) { return t.replace(/#.*$/, ""); })
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/^(\s*)[*+]\s+/gm, "$1- ")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*|__|~~/g, "")
+      .replace(/(^|[^\w*])\*([^*\n]+)\*(?!\w)/g, "$1$2")
+      .replace(/(^|[^\w_])_([^_\n]+)_(?!\w)/g, "$1$2")
+      .replace(/[ \t]+$/gm, "")
+      .trim();
+  }
+  function sectionText(body, re) {
+    var lines = body.split("\n"), out = null, level = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var h = /^(#{1,6})\s+(.*?)\s*$/.exec(lines[i]);
+      if (out) { if (h && h[1].length <= level) break; out.push(lines[i]); }
+      else if (h && re.test(plain(h[2]))) { out = []; level = h[1].length; }
+    }
+    return out ? plain(out.join("\n")).replace(/\n{3,}/g, "\n\n") : "";
+  }
+  function vaultEntry(path, text, kinds) {
+    var n = parseNote(text), fm = n.fm, body = n.body;
+    var note = path.split("/").pop().replace(/\.md$/i, "");
+    if (fm.ledger === false) return { skip: "marked ledger: false" };
+    var kind = typeof fm.ledger === "string" ? VAULT_KINDS[fm.ledger.toLowerCase()] : null;
+    if (!kind) [].concat(fm.tags || fm.tag || []).some(function (t) { return (kind = VAULT_KINDS[String(t).replace(/^#/, "").toLowerCase()] || null); });
+    if (!kind) return null;
+    var f = {}, soft = {};
+    function first(v) { return plain([].concat(v || [])[0]); }
+    if (kind === "quests") {
+      f.title = note;
+      var giver = [].concat(fm["quest-giver"] || []).map(plain).filter(Boolean).join(", ");
+      if (giver) f.giver = giver;
+      ["xp", "order"].forEach(function (k) { if (typeof fm[k] === "number") f[k] = fm[k]; });
+      if (fm.completed === true) f.status = "completed";
+      // The italic board notice is player-facing; it only fills blanks so it never replaces text the GM wrote in the ledger.
+      var nm = /^\*(?!\*)(.+)\*[ \t]*$/m.exec(body);
+      if (nm) {
+        var notice = plain(nm[1]), rm = /(^|\s)Reward:\s*(.*)$/i.exec(notice);
+        if (rm) { soft.reward = rm[2].replace(/\.$/, "").trim(); notice = notice.slice(0, rm.index).trim(); }
+        if (notice) soft.summary = notice;
+      }
+    } else {
+      f.name = note;
+      if (kind === "people" && first(fm.location)) f.where = first(fm.location);
+      if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
+      if (kind === "places" && first(fm.type)) f.kind = first(fm.type);
+    }
+    var known = sectionText(body, /^(player summary|what the party knows)$/i);
+    if (known) f.summary = known;
+    Object.keys(fm).forEach(function (k) {
+      var m = /^ledger-(.+)$/.exec(k); if (!m) return;
+      var name = m[1] === "name" && kind === "quests" ? "title" : m[1];
+      var spec = kinds[kind].fields.filter(function (x) { return x[0] === name; })[0];
+      if (!spec || fm[k] === "") return;
+      var v = spec[2] === "number" ? Number(fm[k]) : [].concat(fm[k]).map(plain).join(", ");
+      if (spec[2] === "number" ? isNaN(v) : !v) return;
+      if (spec[2] === "select" && spec[3].indexOf(v) < 0) return;
+      f[name] = v; delete soft[name];
+    });
+    return { kind: kind, note: note, path: path, fields: f, soft: soft };
+  }
+  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, entry: vaultEntry };
+  if (typeof module !== "undefined" && module.exports) module.exports = Vault; else root.Vault = Vault;
+})(this);
