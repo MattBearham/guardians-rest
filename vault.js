@@ -6,6 +6,8 @@
   // so only player-safe parts are read: frontmatter (a character's tagline is their role), the quest board notice,
   // a "Player summary" section, and `ledger-<field>` overrides. New entries arrive hidden; GM-only state (revealed, log, pins) is kept.
   // Session recaps (tag `recap`) become one timeline entry each: the bullets under "## Timeline", with the notes each one links.
+  // Places in a folder named after the town go on the town map; everything else goes on the world map (ledger-map overrides).
+  var TOWN_FOLDER = "guardian's rest";
   var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places", recap: "timeline", "session-recap": "timeline" };
   function fmValue(v) {
     v = String(v).trim();
@@ -100,6 +102,7 @@
       if (kind === "people" && first(fm.location)) f.where = first(fm.location);
       if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
       if (kind === "places" && first(fm.type)) f.kind = first(fm.type);
+      if (kind === "places") f.map = path.split("/").slice(0, -1).some(function (dir) { return dir.replace(/’/g, "'").toLowerCase() === TOWN_FOLDER; }) ? "town" : "world";
     }
     var known = sectionText(body, /^(player summary|what the party knows)$/i);
     if (known) f.summary = known;

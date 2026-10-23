@@ -10,7 +10,7 @@
       ["name", "Name", "text"], ["role", "Who they are", "text"], ["where", "Where to find them", "text"],
       ["order", "Order", "number"], ["summary", "What the party knows", "area"]] },
     places: { label: "place", fields: [
-      ["name", "Name", "text"], ["kind", "Kind of place", "text"], ["order", "Order", "number"],
+      ["name", "Name", "text"], ["kind", "Kind of place", "text"], ["map", "Map", "select", ["town", "world"]], ["order", "Order", "number"],
       ["summary", "What the party knows", "area"]] }
   };
   if (typeof module !== "undefined" && module.exports) module.exports = KINDS; else root.LEDGER_KINDS = KINDS;

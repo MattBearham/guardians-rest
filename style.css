@@ -126,6 +126,12 @@ section[hidden] { display: none !important; }
 .place h3 { font-size: 21px; }
 .place p { margin: 0; font-size: 16px; }
 
+.subtabs { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
+.subtabs button { font: 700 14px/1 var(--f-label); letter-spacing: .06em; background: transparent; color: var(--muted); border: 0; padding: 10px 16px; cursor: pointer; }
+.subtabs button + button { border-left: 1px solid var(--line); }
+.subtabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.subtabs .count { font-family: var(--f-body); font-weight: 400; margin-left: 4px; }
+
 /* guild */
 .rank-card { display: grid; grid-template-columns: auto 1fr; gap: 6px 22px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 20px 22px; margin-bottom: 18px; }
 .rank-badge { grid-row: span 3; width: 86px; height: 96px; display: grid; place-items: center; }

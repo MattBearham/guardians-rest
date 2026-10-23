@@ -43,7 +43,16 @@ test("quest: completed marks it done; ledger overrides win and bad values are ig
 
 test("location: type becomes kind; Windows line endings and list-style tags", () => {
   const e = entry("Locations/The Capital.md", "---\r\ntags:\r\n- location\r\ntype: city\r\n---\r\n## Overview\r\nThe distant capital.\r\n");
-  assert.deepEqual(e.fields, { name: "The Capital", kind: "city" });
+  assert.deepEqual(e.fields, { name: "The Capital", kind: "city", map: "world" });
+});
+
+test("location: the town folder puts a place on the town map; ledger-map overrides", () => {
+  const town = "---\ntags: [location]\n---\n";
+  assert.equal(entry("Mountport/Locations/Guardian's Rest/The Merry Gull.md", town).fields.map, "town");
+  assert.equal(entry("Mountport/Locations/Guardian’s Rest/The Merry Gull.md", town).fields.map, "town");
+  assert.equal(entry("Mountport/Locations/Guardian's Rest.md", town).fields.map, "world");
+  assert.equal(entry("Mountport/Locations/The Cove/Gull Point Reef.md", "---\ntags: [location]\nledger-map: town\n---\n").fields.map, "town");
+  assert.equal(entry("Mountport/Locations/Guardian's Rest/X.md", "---\ntags: [location]\nledger-map: moon\n---\n").fields.map, "town");
 });
 
 test("ledger: false skips; untagged notes are ignored", () => {

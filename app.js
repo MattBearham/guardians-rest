@@ -42,6 +42,9 @@
     b.addEventListener("click", function () { showTab(b.dataset.tab); });
   });
   showTab((location.hash || "").slice(1));
+  document.querySelectorAll(".subtabs button").forEach(function (b) {
+    b.addEventListener("click", function () { showMap(b.dataset.map); });
+  });
 
   /* ---------- render ---------- */
   function render() {
@@ -232,7 +235,7 @@
   }
   function openEntry(h) {
     if (h.kind === "people") { selPerson = h.item.id; explicitSel = true; peopleQuery = ""; $("peopleSearch").value = ""; }
-    if (h.kind === "places") activePlace = h.item.id;
+    if (h.kind === "places") { activePlace = h.item.id; placesMap = mapOf(h.item.d); }
     showTab(h.kind); render();
     var target = h.kind === "quests" ? $("quest-" + h.item.id) : h.kind === "places" ? $("place-" + h.item.id) : document.querySelector(".dir-detail");
     if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -287,12 +290,34 @@
   /* ---------- chart ---------- */
   var SVGNS = "http://www.w3.org/2000/svg";
   function s(tag, attrs) { var n = document.createElementNS(SVGNS, tag); for (var k in attrs) n.setAttribute(k, attrs[k]); return n; }
-  var chartBase = null;
-  var MAP_W = 1000, MAP_H = 750; // map.jpg is 4:3; pins are stored in these chart units
+  // One map per Places tab. Pins are stored in chart units: 1000 across, with the height following the image's shape.
+  // A map whose image is missing (no world.jpg yet) is simply not shown.
+  var MAPS = {
+    town: { src: "map.jpg?v=1", label: "Map of Guardian's Rest" },
+    world: { src: "world.jpg?v=1", label: "Map of the island" }
+  };
+  var MAP_W = 1000, chartBase = null, placesMap = "town";
+  try { if (localStorage.getItem("ledger-places-map") === "world") placesMap = "world"; } catch (e) {}
+  function mapOf(d) { return d.map === "world" ? "world" : "town"; }
+  function mapInfo(name) {
+    var m = MAPS[name];
+    if (!m.probe) {
+      m.probe = new Image();
+      m.probe.onload = function () { m.h = Math.round(MAP_W * m.probe.naturalHeight / m.probe.naturalWidth); render(); };
+      m.probe.onerror = function () { m.missing = true; render(); };
+      m.probe.src = m.src;
+    }
+    return m;
+  }
+  function showMap(name) {
+    placesMap = name; pinFor = null;
+    try { localStorage.setItem("ledger-places-map", name); } catch (e) {}
+    render();
+  }
   function drawBase(svg) {
     var g = s("g", {});
-    g.appendChild(s("rect", { x: 0, y: 0, width: MAP_W, height: MAP_H, fill: "var(--land)" }));
-    g.appendChild(s("image", { href: "map.jpg?v=1", x: 0, y: 0, width: MAP_W, height: MAP_H, preserveAspectRatio: "xMidYMid slice" }));
+    g.appendChild(s("rect", { "class": "map-bg", x: 0, y: 0, width: MAP_W, height: 750, fill: "var(--land)" }));
+    g.appendChild(s("image", { "class": "map-img", x: 0, y: 0, width: MAP_W, height: 750, preserveAspectRatio: "xMidYMid slice" }));
     svg.appendChild(g);
     chartBase = g;
   }
@@ -314,10 +339,23 @@
         write(db.collection("places").doc(id).update({ x: Math.round(p.x), y: Math.round(p.y) }), "Pinned on the chart.");
       });
     }
+    var all = visible(state.places), m = mapInfo(placesMap), h = m.h || 750;
+    ["town", "world"].forEach(function (k) {
+      $("map-" + k).setAttribute("aria-selected", k === placesMap ? "true" : "false");
+      $("c-map-" + k).textContent = loaded.places ? " " + all.filter(function (pl) { return mapOf(pl.d) === k; }).length : "";
+    });
+    $("chart-box").hidden = !!m.missing;
+    $("map-missing").hidden = !(m.missing && gm);
+    $("chart-label").textContent = m.label;
+    svg.setAttribute("viewBox", "0 0 " + MAP_W + " " + h);
+    svg.setAttribute("aria-label", m.label);
+    chartBase.querySelector(".map-bg").setAttribute("height", h);
+    var img = chartBase.querySelector(".map-img"); img.setAttribute("height", h);
+    if (img.getAttribute("href") !== m.src) img.setAttribute("href", m.src);
     svg.style.cursor = gm && pinFor ? "crosshair" : "default";
     var old = svg.querySelector("#pins"); if (old) old.remove();
     var pins = s("g", { id: "pins" });
-    var list = visible(state.places).sort(byOrder);
+    var list = all.filter(function (pl) { return mapOf(pl.d) === placesMap; }).sort(byOrder);
     list.forEach(function (pl) {
       var d = pl.d; if (typeof d.x !== "number" || typeof d.y !== "number") return;
       var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : ""), transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": String(d.name || "Place") });
@@ -334,7 +372,7 @@
 
     var box = $("place-list"); box.textContent = "";
     if (!loaded.places) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
-    if (!list.length) { box.appendChild(el("div", { cls: "empty", text: "No places charted yet." })); return; }
+    if (!list.length) { box.appendChild(el("div", { cls: "empty", text: placesMap === "town" ? "No places in town charted yet." : "No places beyond the town charted yet." })); return; }
     var grid = el("div", { cls: "places" });
     list.forEach(function (pl) {
       var d = pl.d;

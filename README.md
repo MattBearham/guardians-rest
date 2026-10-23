@@ -13,6 +13,12 @@ The Guardian's Rest player ledger: a static site on GitHub Pages backed by Supab
 
 When you change a CSS or JS file, bump its `?v=` number in `index.html` so browsers don't keep the old copy.
 
+## Maps
+
+The Places tab has a Town map (`map.jpg`) and a World map (`world.jpg`). Either image can be any shape. Until `world.jpg` exists, the World tab just lists its places. To replace a map, swap the file and bump its `?v=` in the `MAPS` list at the top of the chart code in `app.js`; existing pins may then need moving.
+
+Vault locations in a folder named `Guardian's Rest` go on the Town map, and the rest go on the World map. Add `ledger-map: town` or `ledger-map: world` to a note to override.
+
 ## Session timeline
 
 1. After a session, run Claude Code in this folder and give it the transcript: `/session-recap path/to/transcript.txt 3`. It writes `Sessions/Session 3 - Recap.md` into the vault: a player summary, plus a `## Timeline` list of the major moments with `[[links]]` to the people, places and quests involved.
