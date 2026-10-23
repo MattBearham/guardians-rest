@@ -222,6 +222,12 @@ body.gm .gm-only.flexy { display: flex; }
 .gm-form { display: grid; gap: 10px; margin-top: 12px; }
 .gm-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 @media (max-width: 560px) { .gm-form .two { grid-template-columns: 1fr; } .quest h3 { padding-right: 0; padding-top: 26px; } }
+.sync-h { font: 700 13px var(--f-label); letter-spacing: .08em; color: var(--muted); margin: 8px 0 0; }
+.sync-list { display: grid; }
+.sync-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; align-items: start; padding: 8px 0; border-top: 1px solid var(--line); }
+.sync-row b { font-weight: 600; }
+.sync-row .sub { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.sync-row select { width: auto; max-width: 100%; font-size: 14px; padding: 4px 8px; margin-top: 4px; }
 .toggle { display: inline-flex; gap: 8px; align-items: center; font: 700 13px var(--f-label); letter-spacing: .05em; color: var(--muted); cursor: pointer; }
 /* profiles */
 .who { margin-left: auto; align-self: flex-start; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; font-size: 14px; color: var(--muted); }
@@ -295,6 +301,7 @@ body.gm .gm-only.flexy { display: flex; }
 
   <p class="status-line" id="status"></p>
   <div id="claim" hidden></div>
+  <details class="gm-panel gm-only" id="vault-sync"></details>
 
   <section id="guild" role="tabpanel" aria-labelledby="tab-guild">
     <div id="guild-body"></div>
@@ -397,6 +404,7 @@ body.gm .gm-only.flexy { display: flex; }
   function render() {
     document.body.classList.toggle("gm", gm);
     renderProfiles(); renderGuild(); renderQuests(); renderPeople(); renderPlaces(); renderNotes();
+    if (isOwner) renderSync();
     $("c-quests").textContent = loaded.quests ? " " + visible(state.quests).length : "";
     $("c-people").textContent = loaded.people ? " " + visible(state.people).length : "";
     $("c-places").textContent = loaded.places ? " " + visible(state.places).length : "";
@@ -994,6 +1002,244 @@ body.gm .gm-only.flexy { display: flex; }
       });
   }
 
+  /* ---------- Obsidian sync ---------- */
+  // Notes are picked up by their tags (or `ledger: quest|character|location`). Vault notes are GM notes,
+  // so only player-safe parts are read: frontmatter (a character's tagline is their role), the quest board notice,
+  // a "Player summary" section, and `ledger-<field>` overrides. New entries arrive hidden; GM-only state (revealed, log, pins) is kept.
+  var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places" };
+  var sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false };
+  function fmValue(v) {
+    v = String(v).trim();
+    var q = /^(["'])(.*)\1$/.exec(v);
+    if (q) return q[2];
+    if (v.slice(0, 2) === "[[") return v;
+    if (/^\[.*\]$/.test(v)) return v.slice(1, -1).split(",").map(fmValue).filter(function (x) { return x !== ""; });
+    if (/^(true|false)$/i.test(v)) return v.toLowerCase() === "true";
+    if (/^-?\d+(\.\d+)?$/.test(v)) return Number(v);
+    return v;
+  }
+  function parseNote(text) {
+    text = String(text).replace(/^﻿/, "").replace(/\r\n?/g, "\n");
+    var fm = {}, body = text, m = /^---\n([\s\S]*?)\n---[ \t]*(\n|$)/.exec(text);
+    if (m) {
+      body = text.slice(m[0].length);
+      var key = null;
+      m[1].split("\n").forEach(function (line) {
+        var item = /^\s*-\s+(.*)$/.exec(line), kv = /^([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
+        if (item && key) { if (!Array.isArray(fm[key])) fm[key] = []; fm[key].push(fmValue(item[1])); }
+        else if (kv) { key = kv[1].toLowerCase(); fm[key] = kv[2].trim() === "" ? "" : fmValue(kv[2]); }
+      });
+    }
+    return { fm: fm, body: body.replace(/%%[\s\S]*?%%|[<]!--[\s\S]*?--[>]/g, "") }; // bracketed so the HTML parser doesn't see a comment opener in this script
+  }
+  function plain(s) {
+    return String(s == null ? "" : s)
+      .replace(/!\[\[[^\]]*\]\]|!\[[^\]]*\]\([^)]*\)/g, "")
+      .replace(/\[\[([^\]|]*)\|([^\]]*)\]\]/g, "$2")
+      .replace(/\[\[([^\]]*)\]\]/g, function (m, t) { return t.replace(/#.*$/, ""); })
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/^(\s*)[*+]\s+/gm, "$1- ")
+      .replace(/^#{1,6}\s+/gm, "")
+      .replace(/\*\*|__|~~/g, "")
+      .replace(/(^|[^\w*])\*([^*\n]+)\*(?!\w)/g, "$1$2")
+      .replace(/(^|[^\w_])_([^_\n]+)_(?!\w)/g, "$1$2")
+      .replace(/[ \t]+$/gm, "")
+      .trim();
+  }
+  function sectionText(body, re) {
+    var lines = body.split("\n"), out = null, level = 0;
+    for (var i = 0; i < lines.length; i++) {
+      var h = /^(#{1,6})\s+(.*?)\s*$/.exec(lines[i]);
+      if (out) { if (h && h[1].length <= level) break; out.push(lines[i]); }
+      else if (h && re.test(plain(h[2]))) { out = []; level = h[1].length; }
+    }
+    return out ? plain(out.join("\n")).replace(/\n{3,}/g, "\n\n") : "";
+  }
+  function vaultEntry(path, text) {
+    var n = parseNote(text), fm = n.fm, body = n.body;
+    var note = path.split("/").pop().replace(/\.md$/i, "");
+    if (fm.ledger === false) return { skip: "marked ledger: false" };
+    var kind = typeof fm.ledger === "string" ? VAULT_KINDS[fm.ledger.toLowerCase()] : null;
+    if (!kind) [].concat(fm.tags || fm.tag || []).some(function (t) { return (kind = VAULT_KINDS[String(t).replace(/^#/, "").toLowerCase()] || null); });
+    if (!kind) return null;
+    var f = {}, soft = {};
+    function first(v) { return plain([].concat(v || [])[0]); }
+    if (kind === "quests") {
+      f.title = note;
+      var giver = [].concat(fm["quest-giver"] || []).map(plain).filter(Boolean).join(", ");
+      if (giver) f.giver = giver;
+      ["xp", "order"].forEach(function (k) { if (typeof fm[k] === "number") f[k] = fm[k]; });
+      if (fm.completed === true) f.status = "completed";
+      // The italic board notice is player-facing; it only fills blanks so it never replaces text the GM wrote in the ledger.
+      var nm = /^\*(?!\*)(.+)\*[ \t]*$/m.exec(body);
+      if (nm) {
+        var notice = plain(nm[1]), rm = /(^|\s)Reward:\s*(.*)$/i.exec(notice);
+        if (rm) { soft.reward = rm[2].replace(/\.$/, "").trim(); notice = notice.slice(0, rm.index).trim(); }
+        if (notice) soft.summary = notice;
+      }
+    } else {
+      f.name = note;
+      if (kind === "people" && first(fm.location)) f.where = first(fm.location);
+      if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
+      if (kind === "places" && first(fm.type)) f.kind = first(fm.type);
+    }
+    var known = sectionText(body, /^(player summary|what the party knows)$/i);
+    if (known) f.summary = known;
+    Object.keys(fm).forEach(function (k) {
+      var m = /^ledger-(.+)$/.exec(k); if (!m) return;
+      var name = m[1] === "name" && kind === "quests" ? "title" : m[1];
+      var spec = KINDS[kind].fields.filter(function (x) { return x[0] === name; })[0];
+      if (!spec || fm[k] === "") return;
+      var v = spec[2] === "number" ? Number(fm[k]) : [].concat(fm[k]).map(plain).join(", ");
+      if (spec[2] === "number" ? isNaN(v) : !v) return;
+      if (spec[2] === "select" && spec[3].indexOf(v) < 0) return;
+      f[name] = v; delete soft[name];
+    });
+    return { kind: kind, note: note, path: path, fields: f, soft: soft };
+  }
+  function nameOf(it) { return String(it.d.title || it.d.name || ""); }
+  function matchRows() {
+    var claimed = {};
+    sync.rows.forEach(function (r) {
+      var hit = state[r.kind].filter(function (it) { return String(it.d.vaultNote || "").toLowerCase() === r.note.toLowerCase(); })[0];
+      r.match = hit ? hit.id : null; r.linked = !!hit; r.guess = false;
+      if (hit) claimed[hit.id] = true;
+    });
+    sync.rows.forEach(function (r) {
+      if (r.match) return;
+      var nm = (r.fields.title || r.fields.name).toLowerCase();
+      var free = state[r.kind].filter(function (it) { return !it.d.vaultNote && !claimed[it.id] && nameOf(it); });
+      var hits = free.filter(function (it) { return nameOf(it).toLowerCase() === nm; });
+      if (hits.length !== 1) hits = free.filter(function (it) { var a = nameOf(it).toLowerCase(); return nm.indexOf(a) >= 0 || a.indexOf(nm) >= 0; });
+      if (hits.length === 1) { r.match = hits[0].id; r.guess = true; claimed[hits[0].id] = true; }
+    });
+  }
+  function rowData(r) {
+    var cur = r.match ? current(r.kind, r.match) : null, out = {};
+    Object.keys(r.soft).forEach(function (k) { if (!cur || !String(cur[k] == null ? "" : cur[k]).trim()) out[k] = r.soft[k]; });
+    return { cur: cur, fields: Object.assign(out, r.fields) };
+  }
+  function rowChanges(r) {
+    var x = rowData(r);
+    if (!x.cur) return null;
+    var ch = Object.keys(x.fields).filter(function (k) { return String(x.cur[k] == null ? "" : x.cur[k]) !== String(x.fields[k]); });
+    if (x.cur.vaultNote !== r.note) ch.push("link to vault note");
+    return ch;
+  }
+  function readVault(files) {
+    var all = [].slice.call(files || []);
+    var mds = all.filter(function (f) { var p = f.webkitRelativePath || f.name; return /\.md$/i.test(p) && !/(^|\/)(\.[^\/]*|templates?)\//i.test(p); });
+    if (!mds.length) { setStatus("No notes found in that folder."); return; }
+    setStatus("Reading " + mds.length + " notes…");
+    var ep = epoch;
+    Promise.all(mds.map(function (f) { return f.text().then(function (t) { return vaultEntry(f.webkitRelativePath || f.name, t); }); })).then(function (entries) {
+      if (ep !== epoch) return;
+      var seen = {}; sync.rows = []; sync.skipped = []; sync.ignored = 0;
+      entries.forEach(function (e, i) {
+        var path = mds[i].webkitRelativePath || mds[i].name;
+        if (!e) { sync.ignored++; return; }
+        if (e.skip) { sync.skipped.push({ path: path, why: e.skip }); return; }
+        var key = e.kind + "|" + e.note.toLowerCase();
+        if (seen[key]) { sync.skipped.push({ path: path, why: "same note name as " + seen[key] }); return; }
+        seen[key] = path; e.on = true; sync.rows.push(e);
+      });
+      matchRows(); setStatus(""); renderSync();
+      $("vault-sync").scrollIntoView({ block: "start", behavior: "smooth" });
+    }, function () { setStatus("Couldn't read those notes. Try picking the folder again."); });
+  }
+  function applySync() {
+    var todo = sync.rows.filter(function (r) { var ch = rowChanges(r); return r.on && (!ch || ch.length); });
+    if (!todo.length || sync.busy) return;
+    sync.busy = true; renderSync(); setStatus("Syncing from Obsidian…");
+    var ep = epoch, inserts = [], jobs = [];
+    todo.forEach(function (r) {
+      var x = rowData(r);
+      var base = x.cur || Object.assign(r.kind === "quests" ? { status: "available" } : {}, { order: 999, revealed: sync.reveal });
+      var data = Object.assign({}, base, x.fields, { vaultNote: r.note });
+      if (x.cur) jobs.push(sb.from("docs").update({ data: data }).eq("collection", r.kind).eq("id", r.match).select("id").then(function (res) {
+        if (res.error) throw codeErr(res.error); if (!res.data || !res.data.length) throw { code: "invalid_argument" };
+      }));
+      else inserts.push({ collection: r.kind, id: newId(), data: data });
+    });
+    if (inserts.length) jobs.push(sb.from("docs").insert(inserts).select("id").then(function (res) { if (res.error) throw codeErr(res.error); }));
+    Promise.allSettled(jobs).then(function (rs) {
+      if (ep !== epoch) return;
+      var failed = rs.filter(function (x) { return x.status === "rejected"; }).length;
+      var insFailed = inserts.length && rs[rs.length - 1].status === "rejected";
+      var added = insFailed ? 0 : inserts.length, updated = jobs.length - (inserts.length ? 1 : 0) - (failed - (insFailed ? 1 : 0));
+      return Promise.all(["quests", "people", "places"].map(refetch)).then(function () {
+        sync.busy = false; matchRows(); render();
+        setStatus("Synced from Obsidian: " + added + " added, " + updated + " updated." + (failed ? " Some changes didn't save; try again." : ""));
+      });
+    }).catch(function () { sync.busy = false; renderSync(); setStatus("The sync didn't finish. Try again in a moment."); });
+  }
+  function renderSync() {
+    var box = $("vault-sync");
+    box.textContent = "";
+    box.appendChild(el("summary", { text: "Sync from Obsidian" }));
+    var wrap = el("div", { cls: "gm-form" });
+    box.appendChild(wrap);
+    wrap.appendChild(el("p", { cls: "section-intro", text: "Pick your vault folder to add or update quests, characters and locations from notes tagged quest, character or location. Nothing is uploaded until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
+    var pick = el("input", { type: "file", id: "vaultPick", "aria-label": "Obsidian vault folder", onchange: function () { readVault(pick.files); } });
+    pick.setAttribute("webkitdirectory", ""); pick.multiple = true;
+    if (!loaded.quests || !loaded.people || !loaded.places) pick.disabled = true;
+    wrap.appendChild(pick);
+    if (!sync.rows.length && !sync.skipped.length) return;
+    box.open = true;
+
+    var groups = { "new": [], update: [], same: [] };
+    sync.rows.forEach(function (r) { var ch = rowChanges(r); r.changes = ch; groups[!ch ? "new" : ch.length ? "update" : "same"].push(r); });
+    var LABEL = { quests: "QUEST", people: "PERSON", places: "PLACE" };
+    function row(r) {
+      var cb = el("input", { type: "checkbox", "aria-label": "Include " + r.note });
+      cb.checked = r.on; cb.disabled = sync.busy;
+      cb.addEventListener("change", function () { r.on = cb.checked; renderSync(); });
+      var x = rowData(r), info = el("div", null, [
+        el("div", null, [el("span", { cls: "label", text: LABEL[r.kind] + " · " }), el("b", { text: x.fields.title || x.fields.name })]),
+        el("div", { cls: "sub", text: r.changes ? (r.changes.length ? "Changes: " + r.changes.join(", ") : "Up to date") + (r.guess ? " · matched by name to \"" + nameOf({ d: x.cur }) + "\"" : "") : "New, added " + (sync.reveal ? "visible to players" : "hidden from players") }),
+        el("div", { cls: "sub", text: r.path })
+      ]);
+      if (!r.linked) {
+        var sel = el("select", { "aria-label": "Link " + r.note + " to an existing entry" });
+        sel.appendChild(el("option", { value: "", text: "Add as a new entry" }));
+        var taken = {}; sync.rows.forEach(function (o) { if (o !== r && o.match) taken[o.match] = true; });
+        state[r.kind].filter(function (it) { return !it.d.vaultNote && !taken[it.id]; }).sort(function (a, b) { return nameOf(a).localeCompare(nameOf(b)); }).forEach(function (it) {
+          var o = el("option", { value: it.id, text: "Update \"" + (nameOf(it) || "Untitled") + "\"" }); if (it.id === r.match) o.selected = true; sel.appendChild(o);
+        });
+        sel.disabled = sync.busy;
+        sel.addEventListener("change", function () { r.match = sel.value || null; r.guess = false; renderSync(); });
+        if (sel.options.length > 1) info.appendChild(sel);
+      }
+      return el("label", { cls: "sync-row" }, [cb, info]);
+    }
+    [["new", "NEW"], ["update", "UPDATES"]].forEach(function (g) {
+      if (!groups[g[0]].length) return;
+      wrap.appendChild(el("h3", { cls: "sync-h", text: g[1] + " · " + groups[g[0]].length }));
+      var lst = el("div", { cls: "sync-list" }); groups[g[0]].forEach(function (r) { lst.appendChild(row(r)); }); wrap.appendChild(lst);
+    });
+    if (groups.same.length) {
+      var sd = el("details", null, [el("summary", { cls: "sync-h", text: "UP TO DATE · " + groups.same.length })]);
+      var sl = el("div", { cls: "sync-list" }); groups.same.forEach(function (r) { sl.appendChild(row(r)); }); sd.appendChild(sl); wrap.appendChild(sd);
+    }
+    if (sync.skipped.length) {
+      var kd = el("details", null, [el("summary", { cls: "sync-h", text: "SKIPPED · " + sync.skipped.length })]);
+      sync.skipped.forEach(function (s) { kd.appendChild(el("div", { cls: "sync-row" }, [el("span"), el("div", { cls: "sub", text: s.path + ": " + s.why })])); });
+      wrap.appendChild(kd);
+    }
+    if (sync.ignored) wrap.appendChild(el("p", { cls: "status-line", text: sync.ignored + " other notes (lore, sessions, handouts and so on) were ignored." }));
+
+    var rev = el("input", { type: "checkbox", id: "syncReveal" }); rev.checked = sync.reveal; rev.disabled = sync.busy;
+    rev.addEventListener("change", function () { sync.reveal = rev.checked; renderSync(); });
+    var n = sync.rows.filter(function (r) { return r.on && (!r.changes || r.changes.length); }).length;
+    var clear = el("button", { cls: "btn ghost", type: "button", text: "Clear", onclick: function () { sync.rows = []; sync.skipped = []; sync.ignored = 0; renderSync(); } });
+    var go = el("button", { cls: "btn", type: "button", text: sync.busy ? "Syncing…" : n ? "Apply " + n + (n === 1 ? " change" : " changes") : "Nothing to apply", onclick: applySync });
+    clear.disabled = sync.busy; go.disabled = sync.busy || !n;
+    wrap.appendChild(el("div", { cls: "row" }, [
+      el("label", { cls: "toggle", "for": "syncReveal" }, [rev, document.createTextNode("Show new entries to players")]),
+      el("span", { cls: "row" }, [clear, go])
+    ]));
+  }
+
   /* ---------- Supabase data layer ---------- */
   function codeErr(e) {
     var msg = (e && e.message) || "";
@@ -1160,6 +1406,7 @@ body.gm .gm-only.flexy { display: flex; }
     ballotError = false;
     $("gmToggleWrap").hidden = true; $("gmToggle").checked = false;
     ["quests", "people", "places"].forEach(function (k) { $("form-" + k).textContent = ""; });
+    sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false }; $("vault-sync").textContent = "";
     setStatus(""); render();
     showLogin(msg);
   }
