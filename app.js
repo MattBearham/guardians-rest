@@ -76,8 +76,10 @@
       bar.appendChild(sel);
     }
     if (kind === "places") {
-      bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: pinFor === item.id ? "Click the chart…" : "Pin on chart",
+      bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: pinFor === item.id ? "Click the chart…" : typeof d.x === "number" ? "Move pin" : "Pin on chart",
         onclick: function () { pinFor = pinFor === item.id ? null : item.id; render(); } }));
+      if (typeof d.x === "number") bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Remove pin",
+        onclick: function () { if (pinFor === item.id) pinFor = null; write(db.collection("places").doc(item.id).update({ x: null, y: null }), "Pin removed."); } }));
     }
     if (kind === "timeline") {
       // Sessions are edited in the vault; removing one here is undone by syncing its recap again.
