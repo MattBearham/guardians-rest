@@ -121,7 +121,7 @@ section[hidden] { display: none !important; }
 .pin-label { font: 700 18px var(--f-label); letter-spacing: .04em; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 6px; stroke-linejoin: round; pointer-events: none; }
 .pin.active circle.dot { r: 14; }
 .place-dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 20px; align-items: start; }
-.place-dir .dir-detail { position: static; }
+.place-dir .dir-detail { position: static; grid-column: 1 / -1; }
 .place-find { display: grid; align-content: start; min-width: 0; }
 .place-find .search { margin-bottom: 8px; }
 .place-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
