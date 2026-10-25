@@ -820,6 +820,7 @@
     var ep = epoch;
     Promise.all(mds.map(function (f) { return f.text().then(function (t) { return Vault.entry(f.webkitRelativePath || f.name, t, KINDS); }); })).then(function (entries) {
       if (ep !== epoch) return;
+      Vault.resolveMaps(entries);
       var seen = {}; sync.rows = []; sync.skipped = []; sync.ignored = 0; sync.keep = {};
       entries.forEach(function (e, i) {
         var path = mds[i].webkitRelativePath || mds[i].name;

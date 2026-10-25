@@ -42,27 +42,28 @@ test("quest: completed marks it done; ledger overrides win and bad values are ig
 });
 
 test("location: type becomes kind; Windows line endings and list-style tags", () => {
-  const e = entry("Locations/The Capital.md", "---\r\ntags:\r\n- location\r\ntype: city\r\n---\r\n## Overview\r\nThe distant capital.\r\n");
-  assert.deepEqual(e.fields, { name: "The Capital", kind: "city", map: "world" });
+  const e = entry("Locations/The Capital.md", ["---", "tags:", "- location", "type: city", "---", "## Overview", "The distant capital.", ""].join(String.fromCharCode(13, 10)));
+  assert.deepEqual(e.fields, { name: "The Capital", kind: "city" });
 });
 
-test("location: map property or tag picks local (town) or island (world), ahead of the folder", () => {
-  const map = (file, fm) => entry(file, "---\n" + fm + "\n---\n").fields.map;
-  assert.equal(map("Locations/The Cove/Gull Point Reef.md", "tags: [location]\nmap: local"), "town");
-  assert.equal(map("Locations/Guardian's Rest/Kobold Warren.md", "tags: [location]\nmap: Island"), "world");
-  assert.equal(map("Locations/The Cove/The Primrose.md", "tags: [location, local]"), "town");
-  assert.equal(map("Locations/Guardian's Rest/Lighthouse.md", "tags:\n- location\n- island"), "world");
-  assert.equal(map("Locations/The Cove/Reef.md", "tags: [location, island]\nmap: town"), "town");
-  assert.equal(map("Locations/The Cove/Reef.md", "tags: [location]\nmap: moon"), "world");
-});
-
-test("location: the town folder puts a place on the town map; ledger-map overrides", () => {
-  const town = "---\ntags: [location]\n---\n";
-  assert.equal(entry("Mountport/Locations/Guardian's Rest/The Merry Gull.md", town).fields.map, "town");
-  assert.equal(entry("Mountport/Locations/Guardian’s Rest/The Merry Gull.md", town).fields.map, "town");
-  assert.equal(entry("Mountport/Locations/Guardian's Rest.md", town).fields.map, "world");
-  assert.equal(entry("Mountport/Locations/The Cove/Gull Point Reef.md", "---\ntags: [location]\nledger-map: town\n---\n").fields.map, "town");
-  assert.equal(entry("Mountport/Locations/Guardian's Rest/X.md", "---\ntags: [location]\nledger-map: moon\n---\n").fields.map, "town");
+test("location: part-of chain decides the map: Guardian's Rest is local, Toruun is the island", () => {
+  const place = (name, partOf, extra) => entry("Locations/" + name + ".md",
+    ["---", "tags: [location]"].concat(partOf ? ['part-of: "' + partOf + '"'] : [], extra || [], ["---", ""]).join(String.fromCharCode(10)));
+  const notes = [
+    place("Toruun"), place("Guardian's Rest", "[[Toruun]]"),
+    place("The Merry Gull", "[[Guardian's Rest]]"), place("Gull Point Reef", "[[Guardian's Rest|the town]]"),
+    place("Toruun's Spine", "[[Toruun]]"), place("Mount Kellen", "[[Toruun's Spine]]"), place("Kellen's Hearth", "[[Mount Kellen]]"),
+    place("Cellar", "[[The Merry Gull]]"), place("The Capital"), place("Nowhere", "[[Missing Note]]"),
+    place("Loop A", "[[Loop B]]"), place("Loop B", "[[Loop A]]"),
+    place("Overridden", "[[Guardian's Rest]]", ["ledger-map: world"])
+  ];
+  Vault.resolveMaps(notes.concat([null, { skip: "x" }]));
+  const map = {}; notes.forEach(e => { map[e.note] = e.fields.map; });
+  assert.deepEqual(map, {
+    "Toruun": "world", "Guardian's Rest": "world", "The Merry Gull": "town", "Gull Point Reef": "town",
+    "Toruun's Spine": "world", "Mount Kellen": "world", "Kellen's Hearth": "world", "Cellar": "town",
+    "The Capital": "world", "Nowhere": "world", "Loop A": "world", "Loop B": "world", "Overridden": "world"
+  });
 });
 
 test("ledger: false skips; untagged notes are ignored", () => {

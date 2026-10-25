@@ -6,9 +6,6 @@
   // so only player-safe parts are read: frontmatter (a character's tagline is their role), the quest board notice,
   // a "Player summary" section, and `ledger-<field>` overrides. New entries arrive hidden; GM-only state (revealed, log, pins) is kept.
   // Session recaps (tag `recap`) become one timeline entry each: the bullets under "## Timeline", with the notes each one links.
-  // Which map a place goes on: a `map:` property, else a tag, else the folder (the town's folder means the town map).
-  var MAP_WORDS = { local: "town", town: "town", island: "world", world: "world" };
-  var TOWN_FOLDER = "guardian's rest";
   var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places", recap: "timeline", "session-recap": "timeline" };
   function fmValue(v) {
     v = String(v).trim();
@@ -103,9 +100,6 @@
       if (kind === "people" && first(fm.location)) f.where = first(fm.location);
       if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
       if (kind === "places" && first(fm.type)) f.kind = first(fm.type);
-      if (kind === "places") f.map = MAP_WORDS[String(first(fm.map) || first(fm["ledger-map"])).toLowerCase()] ||
-        [].concat(fm.tags || fm.tag || []).map(function (t) { return MAP_WORDS[String(t).replace(/^#/, "").toLowerCase()]; }).filter(Boolean)[0] ||
-        (path.split("/").slice(0, -1).some(function (dir) { return dir.replace(/’/g, "'").toLowerCase() === TOWN_FOLDER; }) ? "town" : "world");
     }
     var known = sectionText(body, /^(player summary|what the party knows)$/i);
     if (known) f.summary = known;
@@ -119,8 +113,28 @@
       if (spec[2] === "select" && spec[3].indexOf(v) < 0) return;
       f[name] = v; delete soft[name];
     });
-    return { kind: kind, note: note, path: path, fields: f, soft: soft };
+    // part-of names the parent note: follow the link target, not its display alias.
+    var parent = String([].concat(fm["part-of"] || [])[0] || ""), link = /\[\[([^\]|#]*)/.exec(parent);
+    return { kind: kind, note: note, path: path, fields: f, soft: soft, partOf: kind === "places" ? (link ? link[1] : plain(parent)).trim().toLowerCase() : "" };
   }
-  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, timelineEvents: timelineEvents, entry: vaultEntry };
+  // Which map each place goes on: follow its part-of chain up to the town (local) or the island (world).
+  // Places that reach neither, or that set ledger-map, are left as they are (world unless ledger-map says town).
+  var TOWN = "guardian's rest", ISLAND = "toruun";
+  function resolveMaps(entries) {
+    var byNote = {};
+    entries.forEach(function (e) { if (e && e.kind === "places") byNote[e.note.toLowerCase()] = e; });
+    entries.forEach(function (e) {
+      if (!e || e.kind !== "places" || e.fields.map) return;
+      var seen = {}, at = e.partOf;
+      while (at && !seen[at]) {
+        if (at === TOWN) { e.fields.map = "town"; return; }
+        if (at === ISLAND) break;
+        seen[at] = true; at = byNote[at] && byNote[at].partOf;
+      }
+      e.fields.map = "world";
+    });
+    return entries;
+  }
+  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, timelineEvents: timelineEvents, entry: vaultEntry, resolveMaps: resolveMaps };
   if (typeof module !== "undefined" && module.exports) module.exports = Vault; else root.Vault = Vault;
 })(this);
