@@ -356,38 +356,31 @@
     var old = svg.querySelector("#pins"); if (old) old.remove();
     var pins = s("g", { id: "pins" });
     var list = all.filter(function (pl) { return mapOf(pl.d) === placesMap; }).sort(byOrder);
-    // Labels avoid each other: each tries right, left, above and below its pin, and if none is clear it stays
-    // hidden until the pin is hovered, focused or selected. The selected place goes first so it always gets one.
-    var pinned = list.filter(function (pl) { return typeof pl.d.x === "number" && typeof pl.d.y === "number"; })
-      .sort(function (a, b) { return (b.id === activePlace) - (a.id === activePlace); });
-    var taken = pinned.map(function (pl) { return { x: pl.d.x - PIN_R, y: pl.d.y - PIN_R, w: PIN_R * 2, h: PIN_R * 2 }; });
-    function clear(b) {
-      if (b.x < 0 || b.y < 0 || b.x + b.w > MAP_W || b.y + b.h > h) return false;
-      return !taken.some(function (o) { return b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h; });
+    // A pin's name shows on hover or focus, and stays up for the selected place (which is how phones see it).
+    // Names live in their own layer above every dot, so a label is never hidden under a neighbouring pin.
+    var labels = s("g", { "class": "pin-labels", "aria-hidden": "true" });
+    function label(d) {
+      var name = String(d.name || ""), gap = PIN_R + 5, left = d.x > MAP_W - name.length * LABEL_SIZE * 0.62 - gap;
+      var t = s("text", { "class": "pin-label", x: d.x + (left ? -gap : gap), y: d.y + LABEL_SIZE * 0.35, "text-anchor": left ? "end" : "start" });
+      t.textContent = name; return t;
     }
-    var drawn = pinned.map(function (pl) {
-      var d = pl.d, name = String(d.name || ""), w = name.length * LABEL_SIZE * 0.62, gap = PIN_R + 5, mid = LABEL_SIZE * 0.35;
-      var spots = [
-        { x: gap, y: mid, anchor: "start", box: { x: d.x + gap, y: d.y - LABEL_SIZE / 2, w: w, h: LABEL_SIZE } },
-        { x: -gap, y: mid, anchor: "end", box: { x: d.x - gap - w, y: d.y - LABEL_SIZE / 2, w: w, h: LABEL_SIZE } },
-        { x: 0, y: -gap - 3, anchor: "middle", box: { x: d.x - w / 2, y: d.y - gap - LABEL_SIZE, w: w, h: LABEL_SIZE } },
-        { x: 0, y: gap + LABEL_SIZE - 3, anchor: "middle", box: { x: d.x - w / 2, y: d.y + gap, w: w, h: LABEL_SIZE } }
-      ];
-      var spot = spots.filter(function (p) { return clear(p.box); })[0];
-      if (spot) taken.push(spot.box);
-      var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : "") + (spot ? "" : " crowded"),
-        transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": name || "Place" });
+    var hoverLabel = null;
+    list.forEach(function (pl) {
+      var d = pl.d; if (typeof d.x !== "number" || typeof d.y !== "number") return;
+      var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : ""),
+        transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": String(d.name || "Place") });
       pg.appendChild(s("circle", { "class": "dot", r: PIN_R }));
-      var p = spot || (d.x > MAP_W - w - gap ? spots[1] : spots[0]);
-      var t = s("text", { x: p.x, y: p.y, "text-anchor": p.anchor }); t.textContent = name;
-      pg.appendChild(t);
       function pick(e) { e.stopPropagation(); selectPlace(pl.id); }
+      function show() { hide(); if (activePlace !== pl.id) { hoverLabel = label(d); labels.appendChild(hoverLabel); } }
+      function hide() { if (hoverLabel) { hoverLabel.remove(); hoverLabel = null; } }
       pg.addEventListener("click", pick);
       pg.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") pick(e); });
-      pg.addEventListener("mouseenter", function () { pins.appendChild(pg); }); // bring a hovered pin's label to the front
-      return pg;
+      pg.addEventListener("mouseenter", show); pg.addEventListener("focus", show);
+      pg.addEventListener("mouseleave", hide); pg.addEventListener("blur", hide);
+      pins.appendChild(pg);
+      if (activePlace === pl.id) labels.appendChild(label(d));
     });
-    drawn.reverse().forEach(function (pg) { pins.appendChild(pg); }); // selected place drawn last, on top
+    pins.appendChild(labels);
     svg.appendChild(pins);
 
     var dir = $("place-dir"), box = $("place-list"), det = $("place-detail");
