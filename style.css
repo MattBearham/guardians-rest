@@ -116,15 +116,25 @@ section[hidden] { display: none !important; }
 .chart-box svg { display: block; width: 100%; height: auto; min-width: 620px; }
 .chart-cap { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 6px 4px 0; font-size: 14px; color: var(--muted); }
 .pin { cursor: pointer; }
-.pin circle.dot { fill: var(--accent); stroke: var(--card); stroke-width: 3; }
+.pin circle.dot { fill: var(--accent); stroke: var(--card); stroke-width: 4; }
 .pin.hidden-pin circle.dot { fill: var(--hidden); opacity: .7; }
-.pin text { font: 700 15px var(--f-label); letter-spacing: .04em; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 5px; stroke-linejoin: round; }
-.pin.active circle.dot { r: 11; }
-.places { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-.place { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 14px 16px; display: grid; gap: 4px; min-width: 0; }
-.place.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.place h3 { font-size: 21px; }
-.place p { margin: 0; font-size: 16px; }
+.pin text { font: 700 24px var(--f-label); letter-spacing: .04em; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 7px; stroke-linejoin: round; }
+.pin.active circle.dot { r: 17; }
+.place-dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 20px; align-items: start; }
+.place-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
+.place-dir .chart-box { margin-bottom: 0; }
+.place-dir .chart-box svg { min-width: 480px; }
+.place-list { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.pin-mono { background: var(--sea); color: var(--card); }
+.place-head { display: grid; gap: 4px; }
+.place-head h2 { font-size: clamp(26px, 4vw, 32px); line-height: 1.1; }
+@media (max-width: 860px) {
+  .place-dir { grid-template-columns: minmax(0, 1fr); }
+  .place-dir .dir-detail { position: static; }
+  .place-dir.has-sel .place-find { display: none; }
+  .place-dir:not(.has-sel) .dir-detail { display: none; }
+  .place-dir .back-btn { display: inline-block; }
+}
 
 .subtabs { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; margin-bottom: 14px; }
 .subtabs button { font: 700 14px/1 var(--f-label); letter-spacing: .06em; background: transparent; color: var(--muted); border: 0; padding: 10px 16px; cursor: pointer; }

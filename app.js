@@ -140,7 +140,7 @@
       var d = p.d, n = String(d.name || "?"), L = personInitial(n), seen = lastSeen(p);
       if (L !== letter) { letter = L; lst.appendChild(el("div", { cls: "dir-letter", text: L })); }
       lst.appendChild(el("button", { type: "button", cls: "dir-row" + (d.revealed ? "" : " is-hidden"), "aria-current": current && current.id === p.id ? "true" : "false",
-        onclick: function () { selPerson = p.id; explicitSel = true; renderPeople(); var dd = document.querySelector(".dir-detail"); if (dd && window.innerWidth <= 720) dd.scrollIntoView({ block: "start" }); } }, [
+        onclick: function () { selPerson = p.id; explicitSel = true; renderPeople(); var dd = document.querySelector("#people .dir-detail"); if (dd && window.innerWidth <= 720) dd.scrollIntoView({ block: "start" }); } }, [
         el("span", { cls: "mono", "aria-hidden": "true", text: L }),
         el("span", { cls: "nm", text: n }),
         el("span", { cls: "sub", text: [d.role, seen ? "last seen session " + seen : ""].filter(Boolean).join(" · ") })
@@ -235,9 +235,9 @@
   }
   function openEntry(h) {
     if (h.kind === "people") { selPerson = h.item.id; explicitSel = true; peopleQuery = ""; $("peopleSearch").value = ""; }
-    if (h.kind === "places") { activePlace = h.item.id; placesMap = mapOf(h.item.d); }
+    if (h.kind === "places") { activePlace = h.item.id; explicitPlace = true; placeQuery = ""; $("placeSearch").value = ""; placesMap = mapOf(h.item.d); }
     showTab(h.kind); render();
-    var target = h.kind === "quests" ? $("quest-" + h.item.id) : h.kind === "places" ? $("place-" + h.item.id) : document.querySelector(".dir-detail");
+    var target = h.kind === "quests" ? $("quest-" + h.item.id) : h.kind === "places" ? $("place-detail") : document.querySelector("#people .dir-detail");
     if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
   }
   function renderTimeline() {
@@ -310,7 +310,7 @@
     return m;
   }
   function showMap(name) {
-    placesMap = name; pinFor = null;
+    placesMap = name; pinFor = null; activePlace = null; explicitPlace = false;
     try { localStorage.setItem("ledger-places-map", name); } catch (e) {}
     render();
   }
@@ -359,35 +359,71 @@
     list.forEach(function (pl) {
       var d = pl.d; if (typeof d.x !== "number" || typeof d.y !== "number") return;
       var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : ""), transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": String(d.name || "Place") });
-      pg.appendChild(s("circle", { "class": "dot", r: 8 }));
+      pg.appendChild(s("circle", { "class": "dot", r: 12 }));
       var anchorEnd = d.x > 760;
-      var t = s("text", { x: anchorEnd ? -14 : 14, y: 5, "text-anchor": anchorEnd ? "end" : "start" }); t.textContent = String(d.name || "");
+      var t = s("text", { x: anchorEnd ? -20 : 20, y: 8, "text-anchor": anchorEnd ? "end" : "start" }); t.textContent = String(d.name || "");
       pg.appendChild(t);
-      function pick(e) { e.stopPropagation(); activePlace = pl.id; render(); var card = $("place-" + pl.id); if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+      function pick(e) { e.stopPropagation(); selectPlace(pl.id); }
       pg.addEventListener("click", pick);
       pg.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") pick(e); });
       pins.appendChild(pg);
     });
     svg.appendChild(pins);
 
-    var box = $("place-list"); box.textContent = "";
-    if (!loaded.places) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
-    if (!list.length) { box.appendChild(el("div", { cls: "empty", text: placesMap === "town" ? "No places in town charted yet." : "No places beyond the town charted yet." })); return; }
-    var grid = el("div", { cls: "places" });
-    list.forEach(function (pl) {
-      var d = pl.d;
-      var card = el("article", { cls: "place" + (d.revealed ? "" : " is-hidden") + (activePlace === pl.id ? " active" : ""), id: "place-" + pl.id }, [
-        d.kind ? el("div", { cls: "label", text: String(d.kind).toUpperCase() }) : null,
-        el("h3", { text: d.name || "Unnamed place" }),
-        d.summary ? el("p", { text: d.summary }) : null,
-        gm && (typeof d.x !== "number") ? el("div", { cls: "label", text: "NOT ON THE CHART YET" }) : null,
-        timelineButton(pl.id),
-        gmBar("places", pl)
-      ]);
-      card.addEventListener("click", function (e) { if (e.target.closest("button, select")) return; activePlace = pl.id; render(); });
-      grid.appendChild(card);
+    var dir = $("place-dir"), box = $("place-list"), det = $("place-detail");
+    box.textContent = ""; det.textContent = "";
+    if (!loaded.places) { dir.classList.remove("has-sel"); box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    var q = placeQuery.trim().toLowerCase();
+    var shown = !q ? list : list.filter(function (pl) { return [pl.d.name, pl.d.kind, pl.d.summary].join(" ").toLowerCase().indexOf(q) >= 0; });
+    if (activePlace && !list.some(function (pl) { return pl.id === activePlace; })) { activePlace = null; explicitPlace = false; }
+    var current = list.filter(function (pl) { return pl.id === activePlace; })[0] || shown[0] || list[0];
+    dir.classList.toggle("has-sel", explicitPlace && !!current);
+    if (!list.length) box.appendChild(el("div", { cls: "empty", text: placesMap === "town" ? "No places in town charted yet." : "No places beyond the town charted yet." }));
+    else if (!shown.length) box.appendChild(el("div", { cls: "empty", text: "No place matches that search." }));
+    shown.forEach(function (pl) {
+      var d = pl.d, pinned = typeof d.x === "number";
+      box.appendChild(el("button", { type: "button", cls: "dir-row" + (d.revealed ? "" : " is-hidden"), "aria-current": current && current.id === pl.id ? "true" : "false",
+        onclick: function () { selectPlace(pl.id); } }, [
+        el("span", { cls: "mono pin-mono", "aria-hidden": "true", text: personInitial(d.name || "?") }),
+        el("span", { cls: "nm", text: d.name || "Unnamed place" }),
+        el("span", { cls: "sub", text: [d.kind, gm && !pinned ? "not on the map" : ""].filter(Boolean).join(" · ") })
+      ]));
     });
-    box.appendChild(grid);
+    if (current) placeDetail(det, current);
+  }
+
+  // The reading panel beside the map: what the party knows, who's found there, and its moments on the timeline.
+  var placeQuery = "", explicitPlace = false;
+  function selectPlace(id) {
+    activePlace = id; explicitPlace = true; render();
+    if (window.innerWidth <= 860) { var dd = $("place-detail"); if (dd) dd.scrollIntoView({ block: "start", behavior: "smooth" }); }
+  }
+  function placeDetail(det, current) {
+    var d = current.d, name = String(d.name || "Unnamed place");
+    det.appendChild(el("button", { cls: "btn small ghost back-btn", type: "button", text: "← All places", onclick: function () { explicitPlace = false; render(); } }));
+    det.appendChild(el("div", { cls: "place-head" }, [
+      d.kind ? el("div", { cls: "label", text: String(d.kind).toUpperCase() }) : null,
+      el("h2", { text: name }),
+      gm && typeof d.x !== "number" ? el("div", { cls: "label", text: "NOT ON THE MAP YET" }) : null
+    ]));
+    det.appendChild(el("h3", { text: "WHAT WE KNOW" }));
+    det.appendChild(el("p", { cls: "known", text: d.summary || "Not much yet." }));
+    var here = visible(state.people).filter(function (p) { return String(p.d.where || "").trim().toLowerCase() === name.toLowerCase(); })
+      .sort(function (a, b) { return String(a.d.name || "").localeCompare(String(b.d.name || "")); });
+    if (here.length) {
+      det.appendChild(el("h3", { text: "PEOPLE HERE · " + here.length }));
+      det.appendChild(el("div", { cls: "links" }, here.map(function (p) {
+        return el("button", { type: "button", cls: "link-chip k-people", text: p.d.name || "Someone", title: "Open " + (p.d.name || "this person"),
+          onclick: function () { openEntry({ kind: "people", item: p }); } });
+      })));
+    }
+    var ms = (moments[current.id] || []).slice().sort(function (a, b) { return (Number(b.session) || 0) - (Number(a.session) || 0); });
+    det.appendChild(el("h3", { text: "ON THE TIMELINE" + (ms.length ? " · " + ms.length : "") }));
+    if (!ms.length) det.appendChild(el("p", { cls: "known", text: "Nothing has happened here yet." }));
+    else det.appendChild(el("ul", { cls: "log" }, ms.map(function (m) {
+      return el("li", null, [el("span", { cls: "ses", text: m.session ? "SESSION " + m.session : "EARLIER" }), el("div", null, [el("p", { text: m.text || "" })])]);
+    })));
+    var bar = gmBar("places", current); if (bar) det.appendChild(bar);
   }
 
   /* ---------- guild ---------- */
@@ -665,6 +701,7 @@
   }
 
   $("peopleSearch").addEventListener("input", function () { peopleQuery = $("peopleSearch").value; renderPeople(); });
+  $("placeSearch").addEventListener("input", function () { placeQuery = $("placeSearch").value; renderPlaces(); });
 
   $("compose").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -1090,7 +1127,7 @@
     renaming = false; confirming = null; pinFor = null; activePlace = null; selPerson = null; explicitSel = false;
     editing = { quests: null, people: null, places: null };
     state = { quests: [], people: [], places: [], timeline: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
-    moments = {}; linkIndex = {}; tlFilter = null;
+    moments = {}; linkIndex = {}; tlFilter = null; placeQuery = ""; explicitPlace = false; $("placeSearch").value = "";
     Object.keys(loaded).forEach(function (k) { loaded[k] = false; });
     ballotError = false;
     $("gmToggleWrap").hidden = true; $("gmToggle").checked = false;

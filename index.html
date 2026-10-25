@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans+SC:wght@500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=3">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -85,18 +85,27 @@
   </section>
 
   <section id="places" role="tabpanel" aria-labelledby="tab-places" hidden>
-    <p class="section-intro">The town, and the island beyond it. Tap a pin or a card to find it on the map.</p>
+    <p class="section-intro">The town, and the island beyond it. Tap a pin or a name to read about it.</p>
     <details class="gm-panel gm-only" id="form-places"></details>
     <div class="subtabs" role="tablist" aria-label="Which map">
       <button role="tab" type="button" id="map-town" data-map="town" aria-selected="true">Town<span class="count" id="c-map-town"></span></button>
       <button role="tab" type="button" id="map-world" data-map="world" aria-selected="false">World<span class="count" id="c-map-world"></span></button>
     </div>
     <p class="gm-panel gm-only" id="map-missing" hidden>No world map yet. Add an image called world.jpg next to index.html and it will appear here.</p>
-    <div class="chart-box" id="chart-box">
-      <div class="chart-scroll"><svg id="chart" viewBox="0 0 1000 750" role="img" aria-label="Map of Guardian's Rest"></svg></div>
-      <div class="chart-cap"><span id="chart-label">Map of Guardian's Rest</span><span id="pin-hint" class="gm-only">Click "Pin on chart" on a place, then click the chart.</span></div>
+    <div class="place-dir" id="place-dir">
+      <div class="place-main">
+        <div class="chart-box" id="chart-box">
+          <div class="chart-scroll"><svg id="chart" viewBox="0 0 1000 750" role="img" aria-label="Map of Guardian's Rest"></svg></div>
+          <div class="chart-cap"><span id="chart-label">Map of Guardian's Rest</span><span id="pin-hint" class="gm-only">Click "Pin on chart" on a place, then click the chart.</span></div>
+        </div>
+        <div class="place-find">
+          <label class="label" for="placeSearch">Find a place</label>
+          <input type="text" id="placeSearch" class="search" placeholder="Search by name or kind" autocomplete="off">
+          <div id="place-list" class="dir-list place-list" role="navigation" aria-label="Places"></div>
+        </div>
+      </div>
+      <article class="dir-detail" id="place-detail"></article>
     </div>
-    <div id="place-list"></div>
   </section>
 
   <section id="notes" role="tabpanel" aria-labelledby="tab-notes" hidden>
@@ -113,6 +122,6 @@
 
 <script src="kinds.js?v=2"></script>
 <script src="vault.js?v=3"></script>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
