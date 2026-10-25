@@ -296,7 +296,7 @@
     town: { src: "map.jpg?v=1", label: "Map of Guardian's Rest" },
     world: { src: "world.jpg?v=1", label: "Map of the island" }
   };
-  var MAP_W = 1000, chartBase = null, placesMap = "town";
+  var MAP_W = 1000, PIN_R = 10, LABEL_SIZE = 18, chartBase = null, placesMap = "town";
   try { if (localStorage.getItem("ledger-places-map") === "world") placesMap = "world"; } catch (e) {}
   function mapOf(d) { return d.map === "world" ? "world" : "town"; }
   function mapInfo(name) {
@@ -356,18 +356,38 @@
     var old = svg.querySelector("#pins"); if (old) old.remove();
     var pins = s("g", { id: "pins" });
     var list = all.filter(function (pl) { return mapOf(pl.d) === placesMap; }).sort(byOrder);
-    list.forEach(function (pl) {
-      var d = pl.d; if (typeof d.x !== "number" || typeof d.y !== "number") return;
-      var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : ""), transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": String(d.name || "Place") });
-      pg.appendChild(s("circle", { "class": "dot", r: 12 }));
-      var anchorEnd = d.x > 760;
-      var t = s("text", { x: anchorEnd ? -20 : 20, y: 8, "text-anchor": anchorEnd ? "end" : "start" }); t.textContent = String(d.name || "");
+    // Labels avoid each other: each tries right, left, above and below its pin, and if none is clear it stays
+    // hidden until the pin is hovered, focused or selected. The selected place goes first so it always gets one.
+    var pinned = list.filter(function (pl) { return typeof pl.d.x === "number" && typeof pl.d.y === "number"; })
+      .sort(function (a, b) { return (b.id === activePlace) - (a.id === activePlace); });
+    var taken = pinned.map(function (pl) { return { x: pl.d.x - PIN_R, y: pl.d.y - PIN_R, w: PIN_R * 2, h: PIN_R * 2 }; });
+    function clear(b) {
+      if (b.x < 0 || b.y < 0 || b.x + b.w > MAP_W || b.y + b.h > h) return false;
+      return !taken.some(function (o) { return b.x < o.x + o.w && o.x < b.x + b.w && b.y < o.y + o.h && o.y < b.y + b.h; });
+    }
+    var drawn = pinned.map(function (pl) {
+      var d = pl.d, name = String(d.name || ""), w = name.length * LABEL_SIZE * 0.62, gap = PIN_R + 5, mid = LABEL_SIZE * 0.35;
+      var spots = [
+        { x: gap, y: mid, anchor: "start", box: { x: d.x + gap, y: d.y - LABEL_SIZE / 2, w: w, h: LABEL_SIZE } },
+        { x: -gap, y: mid, anchor: "end", box: { x: d.x - gap - w, y: d.y - LABEL_SIZE / 2, w: w, h: LABEL_SIZE } },
+        { x: 0, y: -gap - 3, anchor: "middle", box: { x: d.x - w / 2, y: d.y - gap - LABEL_SIZE, w: w, h: LABEL_SIZE } },
+        { x: 0, y: gap + LABEL_SIZE - 3, anchor: "middle", box: { x: d.x - w / 2, y: d.y + gap, w: w, h: LABEL_SIZE } }
+      ];
+      var spot = spots.filter(function (p) { return clear(p.box); })[0];
+      if (spot) taken.push(spot.box);
+      var pg = s("g", { "class": "pin" + (d.revealed ? "" : " hidden-pin") + (activePlace === pl.id ? " active" : "") + (spot ? "" : " crowded"),
+        transform: "translate(" + d.x + " " + d.y + ")", tabindex: "0", role: "button", "aria-label": name || "Place" });
+      pg.appendChild(s("circle", { "class": "dot", r: PIN_R }));
+      var p = spot || (d.x > MAP_W - w - gap ? spots[1] : spots[0]);
+      var t = s("text", { x: p.x, y: p.y, "text-anchor": p.anchor }); t.textContent = name;
       pg.appendChild(t);
       function pick(e) { e.stopPropagation(); selectPlace(pl.id); }
       pg.addEventListener("click", pick);
       pg.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") pick(e); });
-      pins.appendChild(pg);
+      pg.addEventListener("mouseenter", function () { pins.appendChild(pg); }); // bring a hovered pin's label to the front
+      return pg;
     });
+    drawn.reverse().forEach(function (pg) { pins.appendChild(pg); }); // selected place drawn last, on top
     svg.appendChild(pins);
 
     var dir = $("place-dir"), box = $("place-list"), det = $("place-detail");
@@ -428,7 +448,7 @@
 
   /* ---------- guild ---------- */
   var LEVELS = [0, 100, 500, 1400, 2600, 4100, 5900, 8000, 10400, 13100, 16100, 19400, 23000, 26900, 31100, 35600, 40400, 45500, 50900, 56600];
-  var RANKS = ["Adventuring Intern", "Junior Associate", "Associate", "Senior Associate", "Team Lead", "Supervisor", "Assistant Manager", "Manager", "Senior Manager", "Regional Manager", "Director", "Senior Director", "Vice President", "Senior Vice President", "Executive Vice President", "Chief Adventuring Officer", "Managing Partner", "Board Member", "Chair of the Board", "Guildmaster General"];
+  var RANKS = ["Adventuring Intern", "Junior Associate", "Associate", "Senior Associate", "Team Lead", "Supervisor", "Assistant Manager", "Manager", "Senior Manager", "Associate Director", "Director", "Senior Director", "Vice President", "Senior Vice President", "Executive Vice President", "Chief Adventuring Officer", "Managing Partner", "Board Member", "Chair of the Board", "Guildmaster General"];
   function guildState() { var g = state.guild.filter(function (x) { return x.id === "state"; })[0]; return g ? g.d : {}; }
   function guildXp() {
     var xp = 0;
