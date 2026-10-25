@@ -46,6 +46,16 @@ test("location: type becomes kind; Windows line endings and list-style tags", ()
   assert.deepEqual(e.fields, { name: "The Capital", kind: "city", map: "world" });
 });
 
+test("location: map property or tag picks local (town) or island (world), ahead of the folder", () => {
+  const map = (file, fm) => entry(file, "---\n" + fm + "\n---\n").fields.map;
+  assert.equal(map("Locations/The Cove/Gull Point Reef.md", "tags: [location]\nmap: local"), "town");
+  assert.equal(map("Locations/Guardian's Rest/Kobold Warren.md", "tags: [location]\nmap: Island"), "world");
+  assert.equal(map("Locations/The Cove/The Primrose.md", "tags: [location, local]"), "town");
+  assert.equal(map("Locations/Guardian's Rest/Lighthouse.md", "tags:\n- location\n- island"), "world");
+  assert.equal(map("Locations/The Cove/Reef.md", "tags: [location, island]\nmap: town"), "town");
+  assert.equal(map("Locations/The Cove/Reef.md", "tags: [location]\nmap: moon"), "world");
+});
+
 test("location: the town folder puts a place on the town map; ledger-map overrides", () => {
   const town = "---\ntags: [location]\n---\n";
   assert.equal(entry("Mountport/Locations/Guardian's Rest/The Merry Gull.md", town).fields.map, "town");

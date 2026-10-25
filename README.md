@@ -17,7 +17,7 @@ When you change a CSS or JS file, bump its `?v=` number in `index.html` so brows
 
 The Places tab has a Town map (`map.jpg`) and a World map (`world.jpg`). Either image can be any shape. Until `world.jpg` exists, the World tab just lists its places. To replace a map, swap the file and bump its `?v=` in the `MAPS` list at the top of the chart code in `app.js`; existing pins may then need moving.
 
-Vault locations in a folder named `Guardian's Rest` go on the Town map, and the rest go on the World map. Add `ledger-map: town` or `ledger-map: world` to a note to override.
+To choose a vault location's map, give the note a `map:` property (`local` or `town` for the Town map, `island` or `world` for the World map), or tag it `local` or `island`. A note with neither goes by folder: `Guardian's Rest` means the Town map, anything else the World map.
 
 ## Session timeline
 
