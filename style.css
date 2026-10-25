@@ -120,17 +120,19 @@ section[hidden] { display: none !important; }
 .pin.hidden-pin circle.dot { fill: var(--hidden); opacity: .7; }
 .pin-label { font: 700 18px var(--f-label); letter-spacing: .04em; fill: var(--ink); paint-order: stroke; stroke: var(--card); stroke-width: 6px; stroke-linejoin: round; pointer-events: none; }
 .pin.active circle.dot { r: 14; }
-.place-dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 340px); gap: 20px; align-items: start; }
+.place-dir { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 300px); gap: 20px; align-items: start; }
+.place-dir .dir-detail { position: static; }
+.place-find { display: grid; align-content: start; min-width: 0; }
+.place-find .search { margin-bottom: 8px; }
 .place-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
 .place-dir .chart-box { margin-bottom: 0; }
 .place-dir .chart-box svg { min-width: 480px; }
-.place-list { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.place-list, #people .dir-list { overflow-y: auto; overscroll-behavior: contain; padding: 2px; }
 .pin-mono { background: var(--sea); color: var(--card); }
 .place-head { display: grid; gap: 4px; }
 .place-head h2 { font-size: clamp(26px, 4vw, 32px); line-height: 1.1; }
 @media (max-width: 860px) {
   .place-dir { grid-template-columns: minmax(0, 1fr); }
-  .place-dir .dir-detail { position: static; }
   .place-dir.has-sel .place-find { display: none; }
   .place-dir:not(.has-sel) .dir-detail { display: none; }
   .place-dir .back-btn { display: inline-block; }

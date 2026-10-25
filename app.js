@@ -37,6 +37,7 @@
       $("tab-" + t).setAttribute("aria-selected", t === name ? "true" : "false");
     });
     try { history.replaceState(null, "", "#" + name); } catch (e) {}
+    if (typeof fitLists === "function") fitLists();
   }
   document.querySelectorAll("nav button").forEach(function (b) {
     b.addEventListener("click", function () { showTab(b.dataset.tab); });
@@ -52,6 +53,7 @@
     indexMoments();
     renderProfiles(); renderGuild(); renderTimeline(); renderQuests(); renderPeople(); renderPlaces(); renderNotes();
     if (isOwner) renderSync();
+    fitLists();
     $("c-timeline").textContent = loaded.timeline ? " " + visible(state.timeline).length : "";
     $("c-quests").textContent = loaded.quests ? " " + visible(state.quests).length : "";
     $("c-people").textContent = loaded.people ? " " + visible(state.people).length : "";
@@ -199,6 +201,7 @@
     }
     dir.appendChild(det);
     box.appendChild(dir);
+    fitLists();
   }
 
 
@@ -715,6 +718,17 @@
 
   $("peopleSearch").addEventListener("input", function () { peopleQuery = $("peopleSearch").value; renderPeople(); });
   $("placeSearch").addEventListener("input", function () { placeQuery = $("placeSearch").value; renderPlaces(); });
+  // Directories scroll within the box beside them: the place list fills the map's height (the search box included),
+  // and the people list matches the open entry. Neither is capped when it isn't beside its partner (phones, no map).
+  function fitLists() {
+    var map = $("chart-box"), find = $("place-find"), plist = $("place-list"), mapH = map.offsetHeight;
+    var beside = mapH && find.offsetHeight && Math.abs(find.getBoundingClientRect().top - map.getBoundingClientRect().top) < 4;
+    plist.style.maxHeight = beside ? Math.max(160, mapH - (plist.getBoundingClientRect().top - find.getBoundingClientRect().top)) + "px" : mapH ? mapH + "px" : "";
+    var det = document.querySelector("#people .dir-detail"), lst = document.querySelector("#people .dir-list");
+    if (lst) lst.style.maxHeight = det && det.offsetHeight && window.innerWidth > 720 ? Math.max(240, det.offsetHeight) + "px" : "";
+  }
+  if (window.ResizeObserver) new ResizeObserver(fitLists).observe($("chart-box"));
+  window.addEventListener("resize", fitLists);
 
   $("compose").addEventListener("submit", function (e) {
     e.preventDefault();
