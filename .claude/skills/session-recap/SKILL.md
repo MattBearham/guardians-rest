@@ -59,9 +59,17 @@ Aim for about 8 to 20 moments for a three-hour session. Merge small beats into o
 
 ### Party moments
 
-Separately, pick out each player character's standout moments: the ones their player will still be talking about sessions from now. Be very selective. **Pick 1 or 2 per character per session.** Go to 3 only when a character truly dominated the session, and give a character none if nothing of theirs stood out. Ordinary play, such as attacking, casting a spell or chatting with an NPC, is not a party moment, however well it went.
+Separately, each player character gets their standout moments: the ones their player will still be talking about sessions from now. **The GM chooses these, not you.** You find the candidates, and the GM picks which to keep, one character at a time. The aim is 1 or 2 per character per session. Ordinary play, such as attacking, casting a spell or chatting with an NPC, is not a candidate, however well it went.
 
-Tag every moment with one of three types:
+1. **Find the candidates.** For each character who was at the session, shortlist their 3 or 4 best candidates from the whole transcript, each written and tagged exactly as it would appear in the recap. If a character has fewer good ones, offer fewer. Don't pad the list.
+2. **Ask the GM, player by player.** Ask about one character at a time with AskUserQuestion, waiting for each answer before asking about the next. Use one multi-select question, such as "Which of Torren's moments should go in the Session 2 recap?". Each option is one candidate:
+   - **label:** the type and a few words, such as "Funny: the backflips"
+   - **description:** the full moment, as you'd write it in the recap
+
+   Order the options strongest first, and add "(Recommended)" to the one or two you'd keep. The GM can also choose "Other" to write their own moment or reword one. If they pick nothing, that character gets no party moments this session.
+3. **Write only what the GM chose,** with any rewording they gave, under that character's heading. Apply the player-safe rules in section 4 to anything they write in.
+
+Tag every candidate with one of three types:
 
 - **Quote:** a line that sums up the character, or that the table laughed at or repeated. Write only the quote itself, in quotation marks, as close to the transcript as you can: no speaker, no context, no explanation. Example: "Hovel is all around us, really."
 - **Funny:** a bit the table loved, especially a running gag. Example: Torren backflipping at every opportunity, from the interview to the pier.
@@ -79,6 +87,8 @@ The recap is shown to players. Write only what the party saw, heard or learned a
 - Party moments follow the same rules. A player's character notes may hold GM-only secrets (a hidden true nature, a backstory the table hasn't heard): only write what came out at the table.
 
 ## 5. Write the note
+
+Write it once the GM has chosen every character's party moments.
 
 Write `Sessions/Session <N> - Recap.md` in the vault, in exactly this shape:
 
@@ -129,7 +139,7 @@ Rules for the Party moments section:
 - Start every bullet with its type in bold: `**Quote:**`, `**Funny:**` or `**Impact:**`. The ledger reads the type from there and shows it as a label.
 - Make the heading a link to the character's note when they have one, using the exact file name: `### [[Naia Thalassira|Naia]]`. For a character with no note yet, write their name as plain text (`### Torren`), spelled the same way in every recap, and mention it under "For the GM". The ledger files each moment under the character by that heading.
 - Inside a moment, link the people, places and quests involved, as in the Timeline: the moment then also shows in that person's Interactions. Don't link player characters inside a moment.
-- Leave out a character who wasn't at the session, or who had no standout moment, rather than giving them an empty heading.
+- Leave out a character who wasn't at the session, or who the GM gave no moments, rather than giving them an empty heading.
 
 If the recap file already exists, show the GM what would change and ask before you overwrite it. Don't edit any other vault note. If a new NPC needs a note, suggest it under "For the GM".
 
