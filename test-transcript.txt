@@ -1,0 +1,419 @@
+0:00 On the boat
+
+DM: (reads the opening boxed text) Salt spray, creaking rope, and a sky so blue it looks painted… Somewhere ahead, someone is shouting at the sea. You're the only passengers. Take a moment: what does everyone see when they look at you?
+
+Kavu: I'm sitting on a coil of rope that is clearly not built for me. Seven and a half feet of goliath, sunburnt, eating an apple.
+
+Tamsin: Leaning on the rail, cleaning a sword that doesn't need cleaning. Old army coat.
+
+Wen: Sitting cross-legged on the bow. Perfectly still, even when the boat rolls.
+
+Orrin: I'm at the stern, muttering the outward prayer to Lysanna. And I'm checking nobody whistles.
+
+Nerys: Trailing a hand in the water over the side. Smiling at nothing.
+
+DM: (as Alak'Kith) "Good morning, recruits. Alak'Kith Swiftfoot, Director, Amaran Guild of Adventurers. The AGA is delighted to welcome you to what I'm confident will be a… robust community-engagement opportunity." He hands out crisp forms and pencils. "Just a formality. The board likes to know who it's investing in."
+
+Test note: the recruit questionnaire isn't in the session plan yet. It worked well here as the icebreaker, and took about 10 minutes. Worth adding to the boat scene.
+
+DM: Question one: name, and any titles you would like used in official correspondence.
+
+Kavu: "Kavu. Title: Kavu."
+
+DM: (Alak'Kith writes) "…Splendid." Kavu, yours has a special question: "Please describe your approach to conflict resolution, using no more than three words."
+
+Kavu: "Hit it first."
+
+DM: "That's… three. Very efficient." He writes for slightly too long.
+
+Tamsin: I'll take mine. What's the question?
+
+DM: "Please list your weapons proficiencies, then the weapons you are currently carrying. Explain any difference."
+
+Tamsin: "All of them. Two swords, a crossbow, three knives. The difference is the knives in my boots."
+
+DM: "Four knives, then." "…Four."
+
+Orrin: Mine?
+
+DM: "Religious affiliation, for the purposes of guild holidays. Old Rite or Bright Tide?"
+
+Orrin: "Old Rite. And I'll want the Sinking off."
+
+DM: "Naturally." He pauses. "If a guild member were to die on duty, what would you do, and how long would it take?"
+
+Orrin: "Wrap them, give them to the sea on the ebb tide, carve their name on a stone. About a day. Longer if they were tall." (looks at Kavu)
+
+Nerys: And me?
+
+DM: "Can you swim? Please rate your ability from one, not at all, to five, strongly."
+
+Nerys: (long pause) "…Three."
+
+Wen: (OOC) Suspicious.
+
+Nerys: (OOC) I'm a perfectly normal elf.
+
+DM: And Wen: "The guild provides a modest equipment allowance. Please list what you will require."
+
+Wen: "Nothing."
+
+DM: Alak'Kith looks genuinely distressed. "Nothing at all? Not even… a satchel?" "I have a bowl." He writes has a bowl and underlines it.
+
+Tamsin: How does the guild actually work? Who pays us?
+
+DM: (runs through the talking points) Commission only. The town posts jobs, you take them, the poster pays. "A town needs at least fifty residents before the AGA will open a branch. Guardian's Rest has just hit the quota." He says that last bit with a lot of confidence. And there's a rival guild a day up the coast, in Crabbington, which doesn't think this one should exist.
+
+Kavu: We'll beat them.
+
+DM: "That's the spirit. Ideally not literally."
+
+The sighting
+
+DM: As you round into the cove, Wen, your passive Perception is 15. You glance up at the temple on the headland, and beside it, on the very edge of the clifftop…
+
+(reads the stag text)
+
+Wen: I point. "There is a deer on the cliff."
+
+DM: Everyone looks. Nothing there. Alak'Kith, faintly green: "Sea air does strange things, recruit."
+
+Wen: "It was a very large deer."
+
+Test note: only one player saw it, which is how the plan intends it, and it landed well. Note in the ledger that it was Wen. Orrin and Nerys are on 14, one short; if you want the cleric to share the moment, drop the DC to 14.
+
+Runtime check: 0:27. The questionnaire added about ten minutes, but it was the best character introduction of the night.
+
+0:27 Landing, and Marina's welcome
+
+DM: (reads) "ALL HANDS! ALL HANDS! The heroes have made landfall!" A woman in a cream captain's hat with an enormous green plume strides down the pier, swaying, as if the pier is moving. It isn't.
+
+DM (as Marina): "Mayor Marina Finch, but you'll call me Sealegs! Welcome aboard, crew! You, the big one: Mainmast. You with the swords: Bosun. You, the still one: Anchor. The holy fellow: Chaplain. And you, my dear: Mermaid!"
+
+Nerys: (chokes on nothing)
+
+Test note: Marina's random nickname for the druid was a lucky hit, and the player loved it. Worth keeping as a deliberate beat if your druid's player is happy with the nod.
+
+DM: She presents a purse from the town treasury with tremendous ceremony. It's six copper and a commemorative certificate each.
+
+Tamsin: I check the purse. "This is six copper."
+
+DM (as Marina): "And a certificate, Bosun. Frame it."
+
+DM: As you walk up the pier, a voice from somewhere under your feet screams at the waves: "I SAW THAT!" Marina doesn't react at all.
+
+Kavu: I lean over the edge and look under the pier.
+
+DM: You get a glimpse of a driftwood roof and a lot of seaweed before Marina hooks your arm. "Lovely view of the cove from up here, Mainmast. Up here."
+
+DM: (the quick tour) Two piers facing each other across the river mouth, a footbridge between them with one white plank in the middle, and two identical boats, both called The Silver Heron, glaring at each other across the water. Marina sighs. Up in the square, the founder's statue has a gull on his head. Bunting reads WELCOME ADVENTURERES.
+
+Orrin: Who's the statue?
+
+DM (as Marina): "Bartholomew Finch. Founder. Visionary. My father." She straightens his plaque.
+
+DM: She points out the general store, and then three empty buildings "for when everything's official": an old net loft on the beach, a derelict town house just off the square, and a little shack in a meadow. Then she and Alak'Kith head to the Town Hall "to finalise the paperwork," and send you off to the tavern.
+
+Test note: the players wanted to explore all three properties right away. Keep it to one sentence each here; they get the proper choice at the opening ceremony.
+
+0:38 The Merry Gull
+
+DM: Whitewashed walls, a thatched roof, and a sign of a gull drinking from a tankard. Inside it's warm, loud and smells of fish pie. A huge, floury man comes round the bar with his arms open.
+
+DM (as George): "Adventurers! Real ones! Sit, sit. What do you eat where you're from? Never mind, you'll eat this." Five plates appear. He's already a bit teary.
+
+Kavu: I eat all of mine and half of Wen's.
+
+Wen: "That is fine. I was going to give it to him."
+
+DM (as Roselynn, brisk, behind the bar): "Ale, cider or something experimental? And where are you all from? And what's the worst thing you've ever fought? Just curious." She's writing on a notepad under the bar.
+
+Tamsin: Insight. Why's she taking notes?
+
+DM: (Tamsin rolls 14) She's not hostile. It looks more like… research.
+
+DM (as George): "Here, maybe you lot can solve the mystery of where my socks keep disappearing to. Third pair this month."
+
+Orrin: "Gulls?"
+
+DM (as George): "That's what Agatha says."
+
+DM: At the end of the bar, a broad dwarf sits alone with a drink. His hands are trembling. He doesn't look up.
+
+Orrin: Fellow dwarf. I go and sit beside him.
+
+DM (as Godrick): "Not tonight, lad." He finishes his drink and leaves.
+
+Test note: the cleric tried to engage Godrick. The plan says "plant it", which worked, but have one extra line ready for when a dwarf player pushes: perhaps "My forge is cold, and that's the end of it."
+
+DM: The door creaks. A skinny kid with a stick sword sneaks in and stares at Kavu.
+
+DM (as Finn): "Are you in the guild? Can I join? I can fight. I've fought a crab. Two crabs." Roselynn: "FINN. Out."
+
+Pitching camp in the square
+
+DM: Until the charter's signed, you're camping around the statue. Marina has issued a permit, framed. Describe your camp.
+
+Kavu: I don't have a tent. I sleep against the statue.
+
+Wen: A blanket, laid exactly square to the fountain.
+
+Nerys: I set up as close to the river as I'm allowed.
+
+DM: A whistle shrieks. A gangly young man in a home-made uniform and an oversized helmet marches up.
+
+DM (as Hugo): "Constable Hugo Brightwater! Permit, please." (Tamsin hands it over) "…This appears to be in order." He's crushed. "I'll be officially observing this camp. Names, and weapons." He writes everything down. "And, purely for the record: are any of you… wizards?"
+
+Kavu: "No."
+
+Tamsin: "No."
+
+Wen: "No."
+
+Orrin: "Cleric."
+
+Nerys: "Druid."
+
+DM (as Hugo): He narrows his eyes at Nerys. "Druid. That's nature magic, is it? Not wizard magic." He writes DRUID (?) and underlines it twice.
+
+Test note: with no wizard in the party, Hugo fixates on the druid. That works, but keep it light; she's already guarding one secret.
+
+DM: Locals drift past. A teenage girl with a hammer offers to fix your tent pegs, and does a frighteningly good job. A tiny halfling grandmother hands Kavu a bandage.
+
+Kavu: "I'm not hurt."
+
+DM: Then you trip over your own guy rope. She whacks your shin with her stick. "Told you." And a little girl wanders past leading a calf on a string: "This is my twin brother Tommy."
+
+Everyone: (laughs)
+
+Orrin: (OOC) Wait. Is that a joke or a plot?
+
+DM: (smiles)
+
+Runtime check: 1:12. Right on schedule, but only because Finn's second appearance was cut.
+
+1:12 The forty-ninth signature
+
+DM: Marina and Alak'Kith come back across the square. Alak'Kith is not smiling any more.
+
+DM (as Alak'Kith): "Forty-nine." He turns the page over, as if there might be one more on the back. "Mayor Finch, the charter requires fifty residents. Signed."
+
+DM (as Marina): "There ARE fifty! The fiftieth is… Agatha."
+
+Tamsin: Who's Agatha?
+
+DM: Every local within earshot, at once: "Under the pier."
+
+DM (as Alak'Kith): He takes a long breath. "I cannot close this branch. I will not close this branch. So, recruits: your first official job. Fifty signatures, by sundown. Or there is no guild to open."
+
+DM: Marina produces a notice she drew up "just in case," and hammers a post into the ground beside the statue. Your first job board.
+
+(hands out the census notice)
+
+Kavu: Ten gold and a sash. I want the sash.
+
+Orrin: I ask the old halfling woman about Agatha.
+
+DM (as Grandma Yew): She pauses, which she hasn't done all day. "Mind her. She's got reasons." And she walks off.
+
+1:20 Agatha under the pier
+
+DM: (reads the boxed text) …An old woman with wild grey hair, a starfish tangled in it, stands at the waterline shaking her fist at the waves. "I SAW THAT!"
+
+DM (as Agatha): She spins round. "WHO'S THIS. Marina's lot. Boots! Eyebrows! Big Lad! Little Monk! And YOU." (points at Nerys) "You smell like low tide."
+
+Nerys: (OOC) Everyone in this town knows.
+
+Tamsin: "Ma'am, we need you to sign the census."
+
+DM (as Agatha): "Marina's PAPER? No. NO. Not while it's still getting away with it!"
+
+Wen: "While what is getting away with it?"
+
+DM (as Agatha): She jabs a finger at the sea. "IT. It takes, and it takes, and nobody ever makes it PAY."
+
+Orrin: As a priest of the Old Rite… Persuasion? "The depths take what they take. That's the bargain."
+
+DM: (Orrin rolls 17) That lands, and not the way you hoped. She stops shouting. Very quietly: "Then the bargain's rotten." Then loud again: "I want a HOSTAGE."
+
+Kavu: A what?
+
+DM (as Agatha): "A crab. From the sea's own pools. A prisoner of war. A proper one, all its legs. It has to be angry. I want it to look like it holds a grudge. And NOT from a fisherman's bucket. Bucket crabs have given up."
+
+Tamsin: Why does she hate the sea?
+
+DM (as Agatha): "Why does the sea hate ME? Ask it! Anyway. The gulls are in on it."
+
+Test note: the cleric's faith gave a genuinely moving moment with Agatha. It's worth flagging in the plan that an Old Rite cleric can earn that quiet line.
+
+1:38 The crab hunt
+
+DM: She marches you north along the coast to the rock pools. (shows the battle map) Pools and rock walls on the left, a strip of sand down the middle, open sea on the right. Agatha plants herself at the top of the beach and refuses to go a step further. Three successes find the perfect crab. Tell me how you're hunting.
+
+Wen: I wade in slowly and watch for movement. Perception.
+
+DM: (Wen rolls 16) Success. Lots of crabs. None of them angry enough.
+
+Kavu: I flip a rock over.
+
+DM: What skill?
+
+Kavu: Athletics?
+
+DM: It's not on the list, but I'll allow it, DC 12. (Kavu rolls 9) The rock flips, a crab pinches your toe for 1 damage, and from the beach: "TOO CHEERFUL!"
+
+Test note: the barbarian had no skill on the list. Add an Athletics option (flipping boulders, DC 12) so the strength characters have something to do.
+
+Nerys: Animal Handling. I crouch and… talk to them. Quietly.
+
+DM: (Nerys rolls 15) Success. The crabs gather round you like you're an old friend. Agatha squints.
+
+Orrin: Nature. Where would a properly furious crab live?
+
+DM: (Orrin rolls 13) Success. Near something bigger. Angry crabs live beside things that protect them. That's three. In the pool just inside the rock wall, beside a small weed-covered rock with a starfish on it, is a tiny crab, one claw raised, glaring at you with total contempt.
+
+Everyone: That's the one.
+
+DM: Orrin and Nerys, passive Perception 14: the starfish on that rock… keeps moving.
+
+Orrin: "Stop. Nobody touch the crab." (OOC) Can I warn everyone?
+
+DM: You can. Who picks it up?
+
+Tamsin: Me. Shield up, slow.
+
+1:52 The crab fight
+
+DM: (reads the ambush text) The rock with the starfish on it shifts. Then it rises, on four long, barnacled legs… On the beach, Agatha screams: "AMBUSH! I KNEW IT! I KNEW IT!"
+
+DM: Because Orrin and Nerys spotted the starfish, nobody is surprised. Roll initiative.
+
+Initiative	Combatant
+19	Wen
+16	Crabs
+13	Nerys
+11	Tamsin (holding Mittens)
+8	Kavu
+6	Orrin
+
+Test note: the plan doesn't say what a crab does with surprise if nobody is surprised. Fine as written; it just plays as a normal fight.
+
+Round 1
+
+Wen: Flurry on the starfish crab. (two hits, 6 damage)
+
+DM: Crab 1 snaps at Tamsin: 9 damage over two claws, and she's grappled. Crab 2 heaves up out of the left-hand pool and starts wading over. Crab 3, the big boulder on the sand at the bottom of the map, stands up. It's behind you now, cutting off the beach.
+
+Kavu: (OOC) Oh no.
+
+Nerys: Thorn whip on crab 2 to pull it away from Tamsin. (hit, 4 damage)
+
+Tamsin: I'm grappled, holding a crab. Can I attack one-handed?
+
+DM: Yes, Mittens in one hand, sword in the other. (Tamsin hits crab 1 for 8; it's at 1 HP)
+
+Kavu: Rage. I charge crab 3 on the sand. (hits for 11)
+
+Orrin: Bless on Tamsin, Wen and Kavu.
+
+Round 2
+
+DM: The deep, dark pool behind you bulges. The water rises in a dome, and the Matriarch surfaces: barnacled, the size of a cart, with one claw much bigger than the other. She looks at Tamsin. Specifically, at what Tamsin is holding.
+
+Wen: I finish crab 1. (hit; crab 1 drops)
+
+DM: The Matriarch attacks Tamsin: (hits twice, 11 damage) Tamsin is at 1 HP and grappled. Crab 2 grabs Nerys. Crab 3 pinches Kavu, who shrugs it off.
+
+Test note: the Matriarch plus a grappling crab took the fighter from full HP to 1 in a round and a half. That's dangerous at level 1. Either have the Matriarch surface at the end of round 2 instead of the start, or give her only one attack while she's surfacing.
+
+Nerys: Can I do something with the crab instead of hurting it? Animal Handling, to calm it?
+
+DM: That's the talk-it-down option. Make it Insight or Animal Handling, DC 13, as an action. (Nerys rolls 18) You realise they're not attacking. They're protecting the little one. The big one wants him back.
+
+Nerys: "TAMSIN. PUT THE CRAB DOWN."
+
+Tamsin: "I'm a bit busy, Nerys!"
+
+Kavu: (hits crab 3 for 9; it's on 0, down)
+
+Orrin: Healing word on Tamsin. (she goes to 6 HP)
+
+Round 3
+
+DM: The surf runs up the sand. The rocks at the water's edge become islands. The Matriarch starts dragging Tamsin towards the deep pool.
+
+Tamsin: Can I use my action to put Mittens down gently?
+
+DM: You can. You set the little crab on the rock. The Matriarch freezes. Mittens looks at her, looks at you… and scuttles straight back up your arm and sits on your shoulder.
+
+Tamsin: (OOC) What?
+
+DM: The Matriarch lets you go. She clicks once at Mittens, almost a sigh, and sinks back into the deep pool. Crab 2 lets go of Nerys and settles back into a rock. On the beach, Agatha has both fists in the air.
+
+DM (as Agatha): "HE VOLUNTEERED! A DESERTER! PERFECT!"
+
+Test note: the "talking it down" ending is the best moment of the session. The players only found it because the druid tried to calm a crab. Consider having Agatha shout a hint ("WHY ARE THEY SO PROTECTIVE OF A LITTLE ONE?") in round 2, so tables without a druid can find it.
+
+Runtime check: 2:18. The fight took 26 minutes, ending in round 3 (the tide's rounds 4–5 never came up). That leaves plenty of room for the ending.
+
+2:18 The hostage, the signature, and the official opening
+
+DM: (reads the boxed text) Agatha snatches the crab, holds him above her head like a trophy, and wades exactly one step into the surf. "YOU SEE THIS? THIS IS WHAT HAPPENS! YOU TAKE FROM ME, I TAKE FROM YOU!" The crab waves one claw. "His name," she announces, "is Mittens."
+
+Wen: "Why Mittens?"
+
+DM (as Agatha): "Because he's got little HANDS."
+
+DM: She signs the census in an enormous scrawl, and Mittens "witnesses" it with a pinch. Marina, who has appeared from nowhere, presents her with a plaque: "Under the Pier, No. 1." Agatha nails it to her hut with a rock.
+
+DM: (reads the opening ceremony) Half the town has gathered in the square… "I hereby declare this branch… OPEN!"
+
+DM: Alak'Kith exhales, writes something in his ledger, and shakes each of your hands. To Wen: "Has a bowl." To himself: "You'll have to."
+
+Kavu: Can I cut the ribbon?
+
+DM: You can. With what?
+
+Kavu: My axe.
+
+DM: You also cut the tent pole. The tent comes down on Hugo. The crowd cheers anyway.
+
+DM: Marina presents three keys on a ribbon: the net loft on the beach, the old town house off the square, and the meadow shack. The guild has reached level 2, and its first improvement is choosing a home.
+
+Orrin: The town house. It's Marina's father's.
+
+Nerys: The net loft. It's on the beach.
+
+Kavu: Whichever one has the biggest door.
+
+Tamsin: The town house. It's central, and it has walls.
+
+Wen: "I will be content in any of them." (OOC) Town house.
+
+DM: You choose the Old Town House. When you hand the key back to Marina to make it official, she goes very quiet, holds it for a moment, and then says, too loudly: "Well! Shipshape. Excellent choice, crew." She has to excuse herself.
+
+Test note: the home choice took 8 minutes of debate. That's fine, but a handout comparing the three homes and their future improvements would speed it up.
+
+DM: Rewards: 10 gold each, and a Census Sash.
+
+Kavu: I wear mine immediately. Over my armour.
+
+DM: Marina sees it from across the square and visibly glows.
+
+2:41 Closing scene
+
+DM: (reads the closing text) Later that night, as the camp settles down, the first notes start appearing on the job-board post…
+
+DM: So, for next session you can pick one of three jobs: the Merry Gull's cellar thief, Agatha's gull surveillance, or escorting a school trip for Constable Hugo.
+
+Orrin: The socks. We have to find the socks.
+
+Kavu: Gulls. Agatha's our friend now.
+
+Nerys: The school trip sounds nice.
+
+Tamsin: We'll vote next time.
+
+DM: And that's the session.
+
+Final runtime: 2 hours 45 minutes.
