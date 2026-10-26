@@ -1,15 +1,15 @@
 (function () {
   "use strict";
   var KINDS = window.LEDGER_KINDS, Vault = window.Vault;
-  var state = { quests: [], people: [], places: [], timeline: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
+  var state = { quests: [], people: [], places: [], players: [], timeline: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
   var members = [];
-  var loaded = { quests: false, people: false, places: false, timeline: false, notes: false, improvements: false, guild: false, picks: false, members: false, ballot: false };
+  var loaded = { quests: false, people: false, places: false, players: false, timeline: false, notes: false, improvements: false, guild: false, picks: false, members: false, ballot: false };
   var ballotError = false;
-  var COLLECTIONS = ["quests", "people", "places", "timeline", "notes", "improvements", "guild", "picks"];
+  var COLLECTIONS = ["quests", "people", "places", "players", "timeline", "notes", "improvements", "guild", "picks"];
   var confirming = null, confirmingReset = false, voteControlsMissing = false, pickProfiles = {};
   var db = null, sb = null, myId = null, isOwner = false, gm = false;
   var epoch = 0; // bumped on log-out so replies from the old session are ignored
-  var editing = { quests: null, people: null, places: null };
+  var editing = { quests: null, people: null, places: null, players: null };
   var pinFor = null, activePlace = null;
 
   function el(tag, attrs, kids) {
@@ -29,7 +29,7 @@
   function visible(list) { return list.filter(function (x) { return gm || x.d.revealed === true; }); }
 
   /* ---------- tabs ---------- */
-  var TABS = ["guild", "timeline", "quests", "people", "places", "notes"];
+  var TABS = ["guild", "timeline", "players", "quests", "people", "places", "notes"];
   function showTab(name) {
     if (TABS.indexOf(name) < 0) name = "guild";
     TABS.forEach(function (t) {
@@ -51,10 +51,11 @@
   function render() {
     document.body.classList.toggle("gm", gm);
     indexMoments();
-    renderProfiles(); renderGuild(); renderTimeline(); renderQuests(); renderPeople(); renderPlaces(); renderNotes();
+    renderProfiles(); renderGuild(); renderTimeline(); renderPlayers(); renderQuests(); renderPeople(); renderPlaces(); renderNotes();
     if (isOwner) renderSync();
     fitLists();
     $("c-timeline").textContent = loaded.timeline ? " " + visible(state.timeline).length : "";
+    $("c-players").textContent = loaded.players && loaded.timeline ? " " + party().length : "";
     $("c-quests").textContent = loaded.quests ? " " + visible(state.quests).length : "";
     $("c-people").textContent = loaded.people ? " " + visible(state.people).length : "";
     $("c-places").textContent = loaded.places ? " " + visible(state.places).length : "";
@@ -70,6 +71,13 @@
         onclick: function () { write(db.collection(kind).doc(item.id).update({ revealed: !d.revealed }), d.revealed ? "Hidden." : "Revealed to players."); } }),
       KINDS[kind] ? el("button", { cls: "btn small ghost", type: "button", text: "Edit", onclick: function () { startEdit(kind, item); } }) : null
     ]);
+    // Synced entries open their note in the GM's Obsidian (Obsidian finds a note by its name anywhere in the vault).
+    var vault = (window.LEDGER_CONFIG || {}).obsidianVault;
+    function obsidianLink() {
+      if (vault && d.vaultNote) bar.appendChild(el("a", { cls: "btn small ghost", text: "Open in Obsidian",
+        href: "obsidian://open?vault=" + encodeURIComponent(vault) + "&file=" + encodeURIComponent(d.vaultNote) }));
+    }
+    if (kind === "players") obsidianLink();
     if (kind === "quests") {
       var sel = el("select", { "aria-label": "Quest status", id: "status-" + item.id });
       ["available", "active", "completed"].forEach(function (s) {
@@ -79,10 +87,7 @@
       sel.style.width = "auto";
       sel.addEventListener("change", function () { write(db.collection("quests").doc(item.id).update({ status: sel.value }), "Status updated."); });
       bar.appendChild(sel);
-      // Synced quests open their note in the GM's Obsidian (Obsidian finds a note by its name anywhere in the vault).
-      var vault = (window.LEDGER_CONFIG || {}).obsidianVault;
-      if (vault && d.vaultNote) bar.appendChild(el("a", { cls: "btn small ghost", text: "Open in Obsidian",
-        href: "obsidian://open?vault=" + encodeURIComponent(vault) + "&file=" + encodeURIComponent(d.vaultNote) }));
+      obsidianLink();
     }
     if (kind === "places") {
       bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: pinFor === item.id ? "Click the chart…" : typeof d.x === "number" ? "Move pin" : "Pin on chart",
@@ -150,7 +155,7 @@
         if (!x.signedUrl) return; // not allowed, or missing: leave it asked so it isn't retried every render
         portraits[x.path] = { url: x.signedUrl, until: Date.now() + 5 * 3600 * 1000 }; delete portraitsAsked[x.path]; got = true;
       });
-      if (got) renderPeople();
+      if (got) { renderPeople(); renderPlayers(); }
     }, function () {});
   }
   function avatar(d) {
@@ -251,34 +256,150 @@
     keepInView(lst);
   }
 
+  /* ---------- the party ---------- */
+  // Each player character's page: their note's player summary, then their own moments from every recap, newest session first.
+  var selPlayer = null, explicitPlayer = false;
+  function renderPlayers() {
+    var box = $("player-list"); box.textContent = "";
+    if (!loaded.players || !loaded.timeline) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
+    var all = party();
+    if (!all.length) { box.appendChild(el("div", { cls: "empty", text: "No adventurers on the roster yet. The party's characters appear here once the GM adds them." })); return; }
+    if (selPlayer && !all.some(function (p) { return p.id === selPlayer; })) { selPlayer = null; explicitPlayer = false; }
+    var current = all.filter(function (p) { return p.id === selPlayer; })[0] || all[0];
+
+    var dir = el("div", { cls: "dir" + (explicitPlayer ? " has-sel" : "") });
+    var lst = el("div", { cls: "dir-list", role: "navigation", "aria-label": "The party" });
+    all.forEach(function (p) {
+      var d = p.d, n = (partyLog[p.id] || []).length;
+      lst.appendChild(el("button", { type: "button", cls: "dir-row" + (d.revealed ? "" : " is-hidden"), "aria-current": current.id === p.id ? "true" : "false",
+        onclick: function () { selPlayer = p.id; explicitPlayer = true; renderPlayers(); var dd = document.querySelector("#players .dir-detail"); if (dd && window.innerWidth <= 720) dd.scrollIntoView({ block: "start" }); } }, [
+        avatar(d),
+        el("span", { cls: "nm", text: d.name || "?" }),
+        el("span", { cls: "sub", text: [d.role, n ? n + (n === 1 ? " moment" : " moments") : ""].filter(Boolean).join(" · ") })
+      ]));
+    });
+    dir.appendChild(lst);
+
+    // A profile page: the portrait at full size (uncropped) beside who they are and a few counts, then their moments as a feed.
+    var d = current.d, name = String(d.name || "?"), src = portraitSrc(d.portrait);
+    var ms = (partyLog[current.id] || []).map(function (m, i) { return { m: m, i: i }; })
+      .sort(function (a, b) { return (Number(b.m.session) || 0) - (Number(a.m.session) || 0) || a.i - b.i; });
+    var seen = {}; ms.forEach(function (x) { if (x.m.session) seen[x.m.session] = true; });
+    var sess = Object.keys(seen).map(Number).sort(function (a, b) { return a - b; });
+    function stat(n, label) { return el("li", null, [el("b", { text: String(n) }), el("span", { text: label })]); }
+    var det = el("article", { cls: "dir-detail pc-profile" }, [
+      el("button", { cls: "btn small ghost back-btn", type: "button", text: "← The party", onclick: function () { explicitPlayer = false; renderPlayers(); } }),
+      el("header", { cls: "pc-head" + (src ? "" : " no-portrait") }, [
+        src ? el("img", { cls: "pc-portrait", src: src, alt: "Portrait of " + name })
+          : el("div", { cls: "pc-portrait empty", "aria-hidden": "true", text: personInitial(name) }),
+        el("div", { cls: "pc-info" }, [
+          el("h2", { text: name }),
+          d.role ? el("div", { cls: "role", text: d.role }) : null,
+          d.player ? el("div", { cls: "where", text: "Played by " + d.player }) : null,
+          el("ul", { cls: "pc-stats" }, [
+            stat(ms.length, ms.length === 1 ? "moment" : "moments"),
+            stat(sess.length, sess.length === 1 ? "session" : "sessions"),
+            sess.length ? stat(sess[0], "first session") : null
+          ]),
+          timelineButton(current.id)
+        ])
+      ])
+    ]);
+    if (d.summary || !current.extra) {
+      det.appendChild(el("h3", { text: "ABOUT" }));
+      det.appendChild(el("p", { cls: "known", text: d.summary || "Nothing written yet." }));
+    }
+    det.appendChild(el("h3", { text: "MOMENTS" + (ms.length ? " · " + ms.length : "") }));
+    if (!ms.length) det.appendChild(el("p", { cls: "known", text: "No moments recorded yet. They're added from each session's recap." }));
+    else det.appendChild(el("div", { cls: "pc-feed" }, ms.map(function (x) {
+      var hs = (x.m.shared || []).map(function (pc) { return { kind: "players", item: pc }; }).concat(eventLinks(x.m));
+      return el("article", { cls: "pc-post" + (x.m.tag ? " t-" + x.m.tag : "") }, [
+        el("div", { cls: "pc-post-head" }, [
+          x.m.tag ? el("span", { cls: "moment-tag t-" + x.m.tag, text: x.m.tag.toUpperCase() }) : null,
+          el("span", { cls: "ses", text: x.m.session ? "SESSION " + x.m.session : "EARLIER" })
+        ]),
+        el(x.m.tag === "quote" ? "blockquote" : "p", { text: x.m.text || "" }),
+        hs.length ? el("div", { cls: "links" }, hs.map(function (h) {
+          return el("button", { type: "button", cls: "link-chip k-" + h.kind, text: nameOf(h.item), "aria-label": "Open " + KIND_LABEL[h.kind].toLowerCase() + ": " + nameOf(h.item), onclick: function () { openEntry(h); } });
+        })) : null
+      ]);
+    })));
+    if (gm && current.extra) {
+      det.appendChild(el("div", { cls: "gm-panel" }, [el("div", { cls: "label", text: "GM: NO CHARACTER NOTE" }),
+        el("p", { cls: "section-intro", text: "These moments come from the recaps, but there's no player character called " + name + ". Add a vault note with that name tagged player-character (or use the form above), and the moments will move onto it." })]));
+    } else {
+      var bar = gmBar("players", current); if (bar) det.appendChild(bar);
+    }
+    dir.appendChild(det);
+    box.appendChild(dir);
+  }
+
 
   /* ---------- timeline ---------- */
   // Each session (synced from a vault recap) holds events that [[link]] vault notes. Links resolve to ledger entries by
   // vault note name, or failing that by name. Players only see revealed sessions, and links to revealed entries.
-  var KIND_LABEL = { quests: "Quest", people: "Person", places: "Place" };
+  var KIND_LABEL = { quests: "Quest", people: "Person", places: "Place", players: "Player character" };
   var moments = {}, linkIndex = {}, tlFilter = null;
+  // A recap's party moments are filed under each player character's heading. Headings match a Players entry by vault
+  // note, name or first name; a character with no entry yet still gets a page, built from the recaps alone.
+  var partyLog = {}, pcIndex = {}, pcExtra = [];
   function sessions() { return visible(state.timeline).slice().sort(function (a, b) { return (Number(a.d.session) || 0) - (Number(b.d.session) || 0); }); }
   function indexMoments() {
-    linkIndex = {}; moments = {};
+    linkIndex = {}; moments = {}; partyLog = {}; pcIndex = {}; pcExtra = [];
     ["quests", "people", "places"].forEach(function (k) {
       visible(state[k]).forEach(function (it) { var n = nameOf(it).toLowerCase(); if (n && !linkIndex[n]) linkIndex[n] = { kind: k, item: it }; });
     });
     ["quests", "people", "places"].forEach(function (k) {
       visible(state[k]).forEach(function (it) { if (it.d.vaultNote) linkIndex[String(it.d.vaultNote).toLowerCase()] = { kind: k, item: it }; });
     });
+    var pcs = visible(state.players), firsts = {};
+    pcs.forEach(function (it) { var f = nameOf(it).toLowerCase().split(/\s+/)[0]; if (f) firsts[f] = firsts[f] === undefined ? it : null; });
+    Object.keys(firsts).forEach(function (f) { if (firsts[f]) pcIndex[f] = firsts[f]; });
+    pcs.forEach(function (it) { var n = nameOf(it).toLowerCase(); if (n) pcIndex[n] = it; });
+    pcs.forEach(function (it) { if (it.d.vaultNote) pcIndex[String(it.d.vaultNote).toLowerCase()] = it; });
     sessions().forEach(function (s) {
       (s.d.events || []).forEach(function (e) {
         eventLinks(e).forEach(function (h) { (moments[h.item.id] = moments[h.item.id] || []).push({ session: s.d.session, text: e.text }); });
       });
+      (s.d.party || []).forEach(function (p) {
+        // A moment several characters shared is filed under each of them, and shows the others.
+        var group = whoOf(p).map(function (who) {
+          var pc = pcOf(who);
+          if (!pc) { pc = { id: "pc:" + String(who).toLowerCase(), d: { name: who, revealed: true }, extra: true }; pcIndex[String(who).toLowerCase()] = pc; pcExtra.push(pc); }
+          return pc;
+        });
+        (p.events || []).forEach(function (e) {
+          group.forEach(function (pc) {
+            (partyLog[pc.id] = partyLog[pc.id] || []).push({ session: s.d.session, text: e.text, links: e.links, tag: e.tag,
+              shared: group.filter(function (o) { return o !== pc; }) });
+          });
+          // Someone a party moment links counts it among their interactions too.
+          eventLinks(e).forEach(function (h) { (moments[h.item.id] = moments[h.item.id] || []).push({ session: s.d.session, text: e.text }); });
+        });
+      });
     });
   }
+  function pcOf(who) { return pcIndex[String(who || "").trim().toLowerCase()] || null; }
+  function whoOf(p) { return [].concat(p.who || []).filter(Boolean); } // one name in recaps synced before shared moments
+  function party() { return visible(state.players).concat(pcExtra).sort(byOrder); }
   function eventLinks(e) {
     var out = [], seen = {};
     (e.links || []).forEach(function (l) { var h = linkIndex[String(l).toLowerCase()]; if (h && !seen[h.item.id]) { seen[h.item.id] = true; out.push(h); } });
     return out;
   }
+  // Everything a session node shows: what its moments link, then the player characters with moments of their own.
+  function sessionRefs(s) {
+    var out = [], seen = {};
+    function add(h) { if (h && !seen[h.item.id]) { seen[h.item.id] = true; out.push(h); } }
+    (s.d.events || []).forEach(function (e) { eventLinks(e).forEach(add); });
+    (s.d.party || []).forEach(function (p) {
+      whoOf(p).forEach(function (who) { var pc = pcOf(who); if (pc) add({ kind: "players", item: pc }); });
+      (p.events || []).forEach(function (e) { eventLinks(e).forEach(add); });
+    });
+    return out;
+  }
   function timelineButton(id) {
-    var seen = {}; (moments[id] || []).forEach(function (m) { seen[m.session] = true; });
+    var seen = {}; (moments[id] || []).concat(partyLog[id] || []).forEach(function (m) { seen[m.session] = true; });
     var n = Object.keys(seen).length;
     if (!n) return null;
     return el("button", { cls: "btn small ghost tl-btn", type: "button", text: "On the timeline · " + n + (n === 1 ? " session" : " sessions"),
@@ -287,8 +408,9 @@
   function openEntry(h) {
     if (h.kind === "people") { selPerson = h.item.id; explicitSel = true; peopleQuery = ""; $("peopleSearch").value = ""; }
     if (h.kind === "places") { activePlace = h.item.id; explicitPlace = true; placeQuery = ""; $("placeSearch").value = ""; placesMap = mapOf(h.item.d); }
+    if (h.kind === "players") { selPlayer = h.item.id; explicitPlayer = true; }
     showTab(h.kind); render();
-    var target = h.kind === "quests" ? $("quest-" + h.item.id) : h.kind === "places" ? $("place-detail") : document.querySelector("#people .dir-detail");
+    var target = h.kind === "quests" ? $("quest-" + h.item.id) : h.kind === "places" ? $("place-detail") : document.querySelector("#" + h.kind + " .dir-detail");
     if (target) target.scrollIntoView({ block: "start", behavior: "smooth" });
   }
   function renderTimeline() {
@@ -298,11 +420,11 @@
     if (!list.length) { box.appendChild(el("div", { cls: "empty", text: "Nothing on the timeline yet. After each session, the story so far appears here." })); return; }
 
     var refs = {}, order = [];
-    list.forEach(function (s) { (s.d.events || []).forEach(function (e) { eventLinks(e).forEach(function (h) { if (!refs[h.item.id]) { refs[h.item.id] = h; order.push(h); } }); }); });
+    list.forEach(function (s) { sessionRefs(s).forEach(function (h) { if (!refs[h.item.id]) { refs[h.item.id] = h; order.push(h); } }); });
     if (tlFilter && !refs[tlFilter]) tlFilter = null;
     var sel = el("select", { id: "tlFilter" });
     sel.appendChild(el("option", { value: "", text: "Everyone and everything" }));
-    [["people", "People"], ["places", "Places"], ["quests", "Quests"]].forEach(function (g) {
+    [["players", "The party"], ["people", "People"], ["places", "Places"], ["quests", "Quests"]].forEach(function (g) {
       var hs = order.filter(function (h) { return h.kind === g[0]; }).sort(function (a, b) { return nameOf(a.item).localeCompare(nameOf(b.item)); });
       if (!hs.length) return;
       var og = el("optgroup", { label: g[1] });
@@ -316,10 +438,10 @@
 
     // One node per session: its summary, then everyone, everywhere and every quest its recap links.
     list.forEach(function (s) {
-      var d = s.d, met = {}, byKind = { people: [], places: [], quests: [] };
-      (d.events || []).forEach(function (e) { eventLinks(e).forEach(function (h) { if (!met[h.item.id]) { met[h.item.id] = true; byKind[h.kind].push(h); } }); });
+      var d = s.d, met = {}, byKind = { players: [], people: [], places: [], quests: [] };
+      sessionRefs(s).forEach(function (h) { met[h.item.id] = true; byKind[h.kind].push(h); });
       if (tlFilter && !met[tlFilter]) return;
-      var groups = [["people", "PEOPLE"], ["places", "PLACES"], ["quests", "QUESTS"]].filter(function (g) { return byKind[g[0]].length; }).map(function (g) {
+      var groups = [["players", "PARTY"], ["people", "PEOPLE"], ["places", "PLACES"], ["quests", "QUESTS"]].filter(function (g) { return byKind[g[0]].length; }).map(function (g) {
         return el("div", { cls: "tl-group" }, [el("span", { cls: "label", text: g[1] }), el("div", { cls: "links" }, byKind[g[0]].map(function (h) {
           return el("button", { type: "button", cls: "link-chip k-" + h.kind + (h.item.id === tlFilter ? " on" : ""), text: nameOf(h.item),
             "aria-label": "Open " + KIND_LABEL[h.kind].toLowerCase() + ": " + nameOf(h.item), onclick: function () { openEntry(h); } });
@@ -912,7 +1034,13 @@
     Object.keys(r.soft).forEach(function (k) { if (!cur || !String(cur[k] == null ? "" : cur[k]).trim()) out[k] = r.soft[k]; });
     return { cur: cur, fields: Object.assign(out, r.fields) };
   }
-  function flat(v) { return v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v); }
+  // The database (jsonb) stores object keys in its own order, so compare objects with their keys sorted.
+  function canon(v) {
+    if (Array.isArray(v)) return "[" + v.map(canon).join(",") + "]";
+    if (v && typeof v === "object") return "{" + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ":" + canon(v[k]); }).join(",") + "}";
+    return JSON.stringify(v);
+  }
+  function flat(v) { return v == null ? "" : typeof v === "object" ? canon(v) : String(v); }
   function rowChanges(r) {
     var x = rowData(r);
     if (!x.cur) return null;
@@ -956,7 +1084,7 @@
   }
   // The vault is the source of truth: an entry no vault note matches is deleted, but only for types the picked
   // folder has notes for, so picking just the Quests folder can't wipe people, places or the timeline.
-  var SYNCED = ["quests", "people", "places", "timeline"];
+  var SYNCED = ["quests", "people", "places", "players", "timeline"];
   function syncedKinds() { var k = {}; sync.rows.forEach(function (r) { k[r.kind] = true; }); return k; }
   function staleEntries() {
     var kinds = syncedKinds(), matched = {}, out = [];
@@ -966,7 +1094,7 @@
   }
   // Portraits are shrunk in the browser to PORTRAIT_PX on their long side, and named after the note plus a
   // fingerprint of the image, so an unchanged portrait keeps its name (and isn't uploaded again).
-  var PORTRAIT_PX = 400;
+  var PORTRAIT_PX = 800;
   function prepPortrait(file, note) {
     return createImageBitmap(file).then(function (bmp) {
       var k = Math.min(1, PORTRAIT_PX / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
@@ -1004,7 +1132,7 @@
       function job(type, n, p) { jobs.push({ type: type, n: n, p: p }); }
       todo.forEach(function (r) {
         var x = rowData(r);
-        var base = x.cur || Object.assign(r.kind === "quests" ? { status: "available" } : {}, { order: 999, revealed: sync.reveal });
+        var base = x.cur || Object.assign(r.kind === "quests" ? { status: "available" } : {}, { order: 999, revealed: sync.reveal || r.kind === "players" });
         var data = Object.assign({}, base, x.fields, { vaultNote: r.note });
         if (x.cur) job("updated", 1, sb.from("docs").update({ data: data }).eq("collection", r.kind).eq("id", r.match).select("id").then(function (res) {
           if (res.error) throw codeErr(res.error); if (!res.data || !res.data.length) throw { code: "invalid_argument" };
@@ -1024,7 +1152,7 @@
         rs.forEach(function (r, i) { if (r.status === "fulfilled") done[jobs[i].type] += jobs[i].n; else failed++; });
         return Promise.all(SYNCED.map(refetch)).then(function () {
           // Tidy away replaced or removed portraits that nobody uses any more (best effort).
-          var inUse = {}; state.people.forEach(function (p) { if (p.d.portrait) inUse[p.d.portrait] = true; });
+          var inUse = {}; state.people.concat(state.players).forEach(function (p) { if (p.d.portrait) inUse[p.d.portrait] = true; });
           var unused = oldPortraits.filter(function (n) { return !inUse[n]; });
           if (unused.length) sb.storage.from("portraits").remove(unused).then(function () {}, function () {});
           sync.busy = false; sync.keep = {}; matchRows(); render();
@@ -1041,24 +1169,24 @@
     box.appendChild(el("summary", { text: "Sync from Obsidian" }));
     var wrap = el("div", { cls: "gm-form" });
     box.appendChild(wrap);
-    wrap.appendChild(el("p", { cls: "section-intro", text: "Pick your vault folder to add or update quests, characters and locations from notes tagged quest, character or location, and the timeline from session recaps tagged recap. The ledger then matches the vault: anything with no note there is removed (reveals, pins and logs are kept for everything else). Nothing changes until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
+    wrap.appendChild(el("p", { cls: "section-intro", text: "Pick your vault folder to add or update quests, characters, player characters and locations from notes tagged quest, character, player-character or location, and the timeline from session recaps tagged recap. The ledger then matches the vault: anything with no note there is removed (reveals, pins and logs are kept for everything else). Nothing changes until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
     var pick = el("input", { type: "file", id: "vaultPick", "aria-label": "Obsidian vault folder", onchange: function () { readVault(pick.files); } });
     pick.setAttribute("webkitdirectory", ""); pick.multiple = true;
-    if (!loaded.quests || !loaded.people || !loaded.places || !loaded.timeline) pick.disabled = true;
+    if (SYNCED.some(function (k) { return !loaded[k]; })) pick.disabled = true;
     wrap.appendChild(pick);
     if (!sync.rows.length && !sync.skipped.length) return;
     box.open = true;
 
     var groups = { "new": [], update: [], same: [] };
     sync.rows.forEach(function (r) { var ch = rowChanges(r); r.changes = ch; groups[!ch ? "new" : ch.length ? "update" : "same"].push(r); });
-    var LABEL = { quests: "QUEST", people: "PERSON", places: "PLACE", timeline: "SESSION" };
+    var LABEL = { quests: "QUEST", people: "PERSON", places: "PLACE", players: "PLAYER CHARACTER", timeline: "SESSION" };
     function row(r) {
       var cb = el("input", { type: "checkbox", "aria-label": "Include " + r.note });
       cb.checked = r.on; cb.disabled = sync.busy;
       cb.addEventListener("change", function () { r.on = cb.checked; renderSync(); });
       var x = rowData(r), info = el("div", null, [
         el("div", null, [el("span", { cls: "label", text: LABEL[r.kind] + " · " }), el("b", { text: x.fields.title || x.fields.name })]),
-        el("div", { cls: "sub", text: r.changes ? (r.changes.length ? "Changes: " + r.changes.join(", ") : "Up to date") + (r.guess ? " · matched by name to \"" + nameOf({ d: x.cur }) + "\"" : "") : "New, added " + (sync.reveal ? "visible to players" : "hidden from players") }),
+        el("div", { cls: "sub", text: r.changes ? (r.changes.length ? "Changes: " + r.changes.join(", ") : "Up to date") + (r.guess ? " · matched by name to \"" + nameOf({ d: x.cur }) + "\"" : "") : "New, added " + (sync.reveal || r.kind === "players" ? "visible to players" : "hidden from players") }),
         el("div", { cls: "sub", text: r.path })
       ]);
       if (!r.linked) {
@@ -1107,7 +1235,7 @@
       });
       wrap.appendChild(rl);
     }
-    var kinds = syncedKinds(), NAMES = { quests: "quests", people: "people", places: "places", timeline: "timeline sessions" };
+    var kinds = syncedKinds(), NAMES = { quests: "quests", people: "people", places: "places", players: "player characters", timeline: "timeline sessions" };
     var untouched = SYNCED.filter(function (k) { return !kinds[k]; }).map(function (k) { return NAMES[k]; });
     if (untouched.length) wrap.appendChild(el("p", { cls: "status-line", text: "No notes for " + untouched.join(", ") + " in this folder, so those are left as they are." }));
     if (sync.ignored) wrap.appendChild(el("p", { cls: "status-line", text: sync.ignored + " other notes (lore, sessions, handouts and so on) were ignored." }));
@@ -1270,7 +1398,7 @@
         $("gmToggleWrap").hidden = false;
         var saved = false; try { saved = localStorage.getItem("ledger-gm") === "1"; } catch (e) {}
         $("gmToggle").checked = saved; gm = saved;
-        ["quests", "people", "places"].forEach(buildForm);
+        ["quests", "people", "places", "players"].forEach(buildForm);
       }
       return Promise.all(COLLECTIONS.map(refetch).concat([loadBallot()])).then(function () { setStatus(""); });
     }).catch(function () { setStatus("Couldn't open the ledger. Reload the page to try again."); COLLECTIONS.forEach(function (k) { loaded[k] = true; }); loaded.ballot = true; render(); });
@@ -1295,14 +1423,14 @@
     Object.keys(pending).forEach(function (k) { clearTimeout(pending[k]); pending[k] = null; });
     if (channel) { var ch = channel; channel = null; setTimeout(function () { sb.removeChannel(ch); }, 0); }
     myId = null; db = null; isOwner = false; gm = false; members = [];
-    renaming = false; confirming = null; confirmingReset = false; voteControlsMissing = false; pinFor = null; activePlace = null; selPerson = null; explicitSel = false;
-    editing = { quests: null, people: null, places: null };
-    state = { quests: [], people: [], places: [], timeline: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
-    moments = {}; linkIndex = {}; tlFilter = null; placeQuery = ""; explicitPlace = false; $("placeSearch").value = "";
+    renaming = false; confirming = null; confirmingReset = false; voteControlsMissing = false; pinFor = null; activePlace = null; selPerson = null; explicitSel = false; selPlayer = null; explicitPlayer = false;
+    editing = { quests: null, people: null, places: null, players: null };
+    state = { quests: [], people: [], places: [], players: [], timeline: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
+    moments = {}; linkIndex = {}; partyLog = {}; pcIndex = {}; pcExtra = []; tlFilter = null; placeQuery = ""; explicitPlace = false; $("placeSearch").value = "";
     Object.keys(loaded).forEach(function (k) { loaded[k] = false; });
     ballotError = false;
     $("gmToggleWrap").hidden = true; $("gmToggle").checked = false;
-    ["quests", "people", "places"].forEach(function (k) { $("form-" + k).textContent = ""; });
+    ["quests", "people", "places", "players"].forEach(function (k) { $("form-" + k).textContent = ""; });
     sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false, keep: {} }; $("vault-sync").textContent = "";
     portraits = {}; portraitsAsked = {}; portraitQueue = []; clearTimeout(portraitTimer);
     setStatus(""); render();

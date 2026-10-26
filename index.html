@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,600;1,400&family=Alegreya+Sans+SC:wght@500;700&display=swap">
-<link rel="stylesheet" href="style.css?v=15">
+<link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
 
@@ -51,6 +51,7 @@
   <nav role="tablist" aria-label="Ledger sections">
     <button role="tab" id="tab-guild" data-tab="guild" aria-selected="true">The guild</button>
     <button role="tab" id="tab-timeline" data-tab="timeline" aria-selected="false">Timeline<span class="count" id="c-timeline"></span></button>
+    <button role="tab" id="tab-players" data-tab="players" aria-selected="false">The party<span class="count" id="c-players"></span></button>
     <button role="tab" id="tab-quests" data-tab="quests" aria-selected="false">Quest log<span class="count" id="c-quests"></span></button>
     <button role="tab" id="tab-people" data-tab="people" aria-selected="false">People<span class="count" id="c-people"></span></button>
     <button role="tab" id="tab-places" data-tab="places" aria-selected="false">Places<span class="count" id="c-places"></span></button>
@@ -68,6 +69,12 @@
   <section id="timeline" role="tabpanel" aria-labelledby="tab-timeline" hidden>
     <p class="section-intro">The story so far, session by session: what happened, who you met and where you went. Tap a name to open their page.</p>
     <div id="timeline-list"></div>
+  </section>
+
+  <section id="players" role="tabpanel" aria-labelledby="tab-players" hidden>
+    <p class="section-intro">The guild's own adventurers: who they are, and the moments from each session that were theirs.</p>
+    <details class="gm-panel gm-only" id="form-players"></details>
+    <div id="player-list"></div>
   </section>
 
   <section id="quests" role="tabpanel" aria-labelledby="tab-quests" hidden>
@@ -120,8 +127,8 @@
   </section>
 </div>
 
-<script src="kinds.js?v=3"></script>
-<script src="vault.js?v=8"></script>
-<script src="app.js?v=23"></script>
+<script src="kinds.js?v=4"></script>
+<script src="vault.js?v=11"></script>
+<script src="app.js?v=29"></script>
 </body>
 </html>

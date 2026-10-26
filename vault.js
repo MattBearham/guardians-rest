@@ -5,8 +5,11 @@
   // Notes are picked up by their tags (or `ledger: quest|character|location`). Vault notes are GM notes,
   // so only player-safe parts are read: frontmatter (a character's tagline is their role), the quest board notice,
   // a "Player summary" section, and `ledger-<field>` overrides. New entries arrive hidden; GM-only state (revealed, log, pins) is kept.
-  // Session recaps (tag `recap`) become one timeline entry each: the bullets under "## Timeline", with the notes each one links.
-  var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places", recap: "timeline", "session-recap": "timeline" };
+  // Session recaps (tag `recap`) become one timeline entry each: the bullets under "## Timeline", with the notes each one links,
+  // plus each player character's own moments from "## Party moments" (one "### <character>" heading each).
+  // Player characters (tag `player-character`) go to the Players tab, even when they're also tagged `character`.
+  var VAULT_KINDS = { quest: "quests", quests: "quests", character: "people", npc: "people", person: "people", location: "places", place: "places",
+    "player-character": "players", pc: "players", player: "players", recap: "timeline", "session-recap": "timeline" };
   function fmValue(v) {
     v = String(v).trim();
     var q = /^(["'])(.*)\1$/.exec(v);
@@ -68,12 +71,41 @@
       return { text: plain(s), links: links };
     }).filter(function (e) { return e.text; });
   }
+  // "### [[Naia Thalassira|Naia]]" (or plain "### Torren") then bullets: `who` lists the characters, by link target or name.
+  // A heading naming several ("### [[Barnaby Bramblewick|Barnaby]], [[Naia Thalassira|Naia]] and Torren") holds moments they shared.
+  // A bullet that starts "**Quote:**", "**Funny:**" or "**Impact:**" gets that `tag`, and loses the label from its text.
+  var MOMENT_TAG = /^(quote|funny|impact)\s*:\s*/i;
+  function headingNames(h) {
+    var names = [], rest = h.replace(/\[\[([^\]|#]*)[^\]]*\]\]/g, function (m, t) { if (t.trim()) names.push(t.trim()); return ","; });
+    plain(rest).split(/\s*(?:,|&|\band\b)\s*/i).forEach(function (n) { if (n.trim()) names.push(n.trim()); });
+    return names;
+  }
+  function partyMoments(raw) {
+    var out = [], cur = null;
+    raw.split("\n").forEach(function (line) {
+      var h = /^#{3,6}\s+(.*?)\s*$/.exec(line);
+      if (h) {
+        var who = headingNames(h[1]);
+        cur = who.length ? { who: who, lines: [] } : null; if (cur) out.push(cur);
+      } else if (cur) cur.lines.push(line);
+    });
+    return out.map(function (p) {
+      return { who: p.who, events: timelineEvents(p.lines.join("\n")).map(function (e) {
+        var t = MOMENT_TAG.exec(e.text);
+        if (t) { e.tag = t[1].toLowerCase(); e.text = e.text.slice(t[0].length); }
+        return e;
+      }).filter(function (e) { return e.text; }) };
+    }).filter(function (p) { return p.events.length; });
+  }
   function vaultEntry(path, text, kinds) {
     var n = parseNote(text), fm = n.fm, body = n.body;
     var note = path.split("/").pop().replace(/\.md$/i, "");
     if (fm.ledger === false) return { skip: "marked ledger: false" };
     var kind = typeof fm.ledger === "string" ? VAULT_KINDS[fm.ledger.toLowerCase()] : null;
-    if (!kind) [].concat(fm.tags || fm.tag || []).some(function (t) { return (kind = VAULT_KINDS[String(t).replace(/^#/, "").toLowerCase()] || null); });
+    if (!kind) {
+      var tagged = [].concat(fm.tags || fm.tag || []).map(function (t) { return VAULT_KINDS[String(t).replace(/^#/, "").toLowerCase()]; }).filter(Boolean);
+      kind = tagged.indexOf("players") >= 0 ? "players" : tagged[0];
+    }
     if (!kind) return null;
     var f = {}, soft = {}, image = "";
     function first(v) { return plain([].concat(v || [])[0]); }
@@ -96,12 +128,16 @@
       f.title = plain(fm.title) || (f.session ? "Session " + f.session : note);
       f.events = timelineEvents(sectionRaw(body, /^timeline$/i));
       if (!f.events.length) return { skip: "recap has no bullets under ## Timeline" };
+      var party = partyMoments(sectionRaw(body, /^party( moments)?$/i));
+      if (party.length) f.party = party;
     } else {
+      var who = kind === "people" || kind === "players";
       f.name = note;
       if (kind === "people" && first(fm.location)) f.where = first(fm.location);
-      if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
+      if (who && first(fm.tagline)) f.role = first(fm.tagline);
+      if (kind === "players" && first(fm.player)) f.player = first(fm.player);
       // A character's portrait is the first image embedded in the note; the sync uploads that file.
-      var embed = kind === "people" && (/!\[\[([^\]|#]+?\.(?:png|jpe?g|webp|gif))(?:[|#][^\]]*)?\]\]/i.exec(body) ||
+      var embed = who && (/!\[\[([^\]|#]+?\.(?:png|jpe?g|webp|gif))(?:[|#][^\]]*)?\]\]/i.exec(body) ||
         /!\[[^\]]*\]\(<?([^)>]+?\.(?:png|jpe?g|webp|gif))>?\)/i.exec(body));
       if (embed) image = embed[1].trim().split("/").pop().replace(/%20/g, " ");
       if (kind === "places" && (first(fm.tagline) || first(fm.type))) f.kind = first(fm.tagline) || first(fm.type);
@@ -140,6 +176,6 @@
     });
     return entries;
   }
-  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, timelineEvents: timelineEvents, entry: vaultEntry, resolveMaps: resolveMaps };
+  var Vault = { parseNote: parseNote, plain: plain, sectionText: sectionText, timelineEvents: timelineEvents, partyMoments: partyMoments, entry: vaultEntry, resolveMaps: resolveMaps };
   if (typeof module !== "undefined" && module.exports) module.exports = Vault; else root.Vault = Vault;
 })(this);
