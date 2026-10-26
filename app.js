@@ -159,9 +159,18 @@
       : el("span", { cls: "mono", "aria-hidden": "true", text: personInitial(d.name || "?") });
   }
 
+  // Scroll a directory list (not the page) just enough to show its selected row.
+  function keepInView(list) {
+    var row = list.querySelector('[aria-current="true"]');
+    if (!row || list.scrollHeight <= list.clientHeight) return;
+    var top = row.offsetTop - list.offsetTop, bottom = top + row.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+  }
   function lastSeen(p) { var m = 0; (p.d.log || []).concat(moments[p.id] || []).forEach(function (e) { if (Number(e.session) > m) m = Number(e.session); }); return m; }
   function renderPeople() {
-    var box = $("people-list"); box.textContent = "";
+    var box = $("people-list"), oldList = box.querySelector(".dir-list"), keepScroll = oldList ? oldList.scrollTop : 0;
+    box.textContent = "";
     if (!loaded.people) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
     var all = visible(state.people).slice().sort(function (a, b) { return sortName(a.d.name).localeCompare(sortName(b.d.name)) || String(a.d.name || "").localeCompare(String(b.d.name || "")); });
     if (!all.length) { box.appendChild(el("div", { cls: "empty", text: "You haven't met anyone yet. New faces will appear here as you meet them." })); return; }
@@ -238,6 +247,8 @@
     dir.appendChild(det);
     box.appendChild(dir);
     fitLists();
+    lst.scrollTop = keepScroll; // after fitLists caps its height; redrawing shouldn't jump it back to the top
+    keepInView(lst);
   }
 
 
@@ -420,7 +431,7 @@
     pins.appendChild(labels);
     svg.appendChild(pins);
 
-    var dir = $("place-dir"), box = $("place-list"), det = $("place-detail");
+    var dir = $("place-dir"), box = $("place-list"), det = $("place-detail"), keepScroll = box.scrollTop;
     box.textContent = ""; det.textContent = "";
     if (!loaded.places) { dir.classList.remove("has-sel"); box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
     var q = placeQuery.trim().toLowerCase();
@@ -439,6 +450,8 @@
         el("span", { cls: "sub", text: [d.kind, gm && !pinned ? "not on the map" : ""].filter(Boolean).join(" · ") })
       ]));
     });
+    box.scrollTop = keepScroll; // redrawing the list shouldn't jump it back to the top
+    keepInView(box);
     if (current) placeDetail(det, current);
   }
 
