@@ -1019,7 +1019,13 @@
     Object.keys(r.soft).forEach(function (k) { if (!cur || !String(cur[k] == null ? "" : cur[k]).trim()) out[k] = r.soft[k]; });
     return { cur: cur, fields: Object.assign(out, r.fields) };
   }
-  function flat(v) { return v == null ? "" : typeof v === "object" ? JSON.stringify(v) : String(v); }
+  // The database (jsonb) stores object keys in its own order, so compare objects with their keys sorted.
+  function canon(v) {
+    if (Array.isArray(v)) return "[" + v.map(canon).join(",") + "]";
+    if (v && typeof v === "object") return "{" + Object.keys(v).sort().filter(function (k) { return v[k] !== undefined; }).map(function (k) { return JSON.stringify(k) + ":" + canon(v[k]); }).join(",") + "}";
+    return JSON.stringify(v);
+  }
+  function flat(v) { return v == null ? "" : typeof v === "object" ? canon(v) : String(v); }
   function rowChanges(r) {
     var x = rowData(r);
     if (!x.cur) return null;
