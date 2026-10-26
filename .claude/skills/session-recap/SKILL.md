@@ -63,7 +63,7 @@ Separately, pick out each player character's standout moments: the ones their pl
 
 Tag every moment with one of three types:
 
-- **Quote:** a line that sums up the character, or that the table laughed at or repeated. Quote it as closely as the transcript allows, then add a few words of context. Example: Breadstick explaining where Hovel is: "Hovel is all around us, really."
+- **Quote:** a line that sums up the character, or that the table laughed at or repeated. Write only the quote itself, in quotation marks, as close to the transcript as you can: no speaker, no context, no explanation. Example: "Hovel is all around us, really."
 - **Funny:** a bit the table loved, especially a running gag. Example: Torren backflipping at every opportunity, from the interview to the pier.
 - **Impact:** something the character did that changed how a scene or the session went. Examples: the deciding vote, a clutch save, a choice that turned a fight.
 
@@ -104,7 +104,7 @@ date: <YYYY-MM-DD, if the GM or the transcript gives it; otherwise leave this li
 
 ### [[Breadstick]]
 
-- **Quote:** "Hovel is all around us, really." Explaining that his home is part underground, part by the sea, part forest and part desert, all joined by tunnels.
+- **Quote:** "Hovel is all around us, really."
 
 ### [[Torren Cloudstep|Torren]]
 
