@@ -235,7 +235,7 @@ img.mono { display: block; object-fit: cover; object-position: center 20%; backg
 .session > h2::before { content: ""; position: absolute; left: -30px; top: .3em; width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 3px solid var(--accent); box-sizing: border-box; }
 .session > h2 .label { font-size: 12px; }
 .session.is-hidden { border-style: none; }
-.tl-summary { margin: 0; max-width: 68ch; }
+.tl-summary { margin: 0; }
 .tl-groups { display: grid; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 12px 16px; }
 .tl-group { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 4px 12px; align-items: baseline; }
 .tl-group .links { margin-top: 0; }
