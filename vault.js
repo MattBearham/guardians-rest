@@ -83,12 +83,13 @@
       if (giver) f.giver = giver;
       ["xp", "order"].forEach(function (k) { if (typeof fm[k] === "number") f[k] = fm[k]; });
       if (fm.completed === true) f.status = "completed";
-      // The italic board notice is player-facing; it only fills blanks so it never replaces text the GM wrote in the ledger.
+      // The italic board notice is player-facing: it gives the reward and, unless there's a Player summary, the summary.
       var nm = /^\*(?!\*)(.+)\*[ \t]*$/m.exec(body);
       if (nm) {
         var notice = plain(nm[1]), rm = /(^|\s)Reward:\s*(.*)$/i.exec(notice);
-        if (rm) { soft.reward = rm[2].replace(/\.$/, "").trim(); notice = notice.slice(0, rm.index).trim(); }
-        if (notice) soft.summary = notice;
+        // the reward is the sentence after "Reward:"; anything after it (a signature, say) isn't part of it
+        if (rm) { f.reward = rm[2].split(/(?<=[.!?])\s+/)[0].replace(/\.$/, "").trim(); notice = notice.slice(0, rm.index).trim(); }
+        if (notice) f.summary = notice;
       }
     } else if (kind === "timeline") {
       if (typeof fm.session === "number") f.session = fm.session;

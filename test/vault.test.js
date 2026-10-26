@@ -31,14 +31,26 @@ test("quest: frontmatter, giver, and the board notice split into summary and rew
     "**Reward:** GM-only reward notes"
   ].join("\n"));
   assert.equal(e.kind, "quests");
-  assert.deepEqual(e.fields, { title: "Assistant Wanted", giver: "Margaret Grandma Yew", xp: 300, order: 5 });
-  assert.deepEqual(e.soft, { reward: "8 gold and a remedy of your choice", summary: "One Day Only: I need a pair of hands." });
+  assert.deepEqual(e.fields, { title: "Assistant Wanted", giver: "Margaret Grandma Yew", xp: 300, order: 5,
+    reward: "8 gold and a remedy of your choice", summary: "One Day Only: I need a pair of hands." });
+});
+
+test("quest: a Player summary beats the notice for the summary; the notice still gives the reward", () => {
+  const e = entry("Quests/Census.md", ["---", "tags: [quest]", "---", "*OFFICIAL NOTICE: One signature needed. Reward: 10 gold.*", "",
+    "## Player summary", "", "The census is one signature short.", "", "## Role-play", "GM notes"].join("\n"));
+  assert.equal(e.fields.summary, "The census is one signature short.");
+  assert.equal(e.fields.reward, "10 gold");
+});
+
+test("quest: a signature after the reward isn't part of it", () => {
+  const e = entry("Quests/Botany.md", "---\ntags: [quest]\n---\n*OFFICIAL NOTICE. Escort the school trip. Reward: 12 gold and lunch provided by the students. — Constable H. Brightwater*\n");
+  assert.equal(e.fields.reward, "12 gold and lunch provided by the students");
+  assert.equal(e.fields.summary, "OFFICIAL NOTICE. Escort the school trip.");
 });
 
 test("quest: completed marks it done; ledger overrides win and bad values are ignored", () => {
   const e = entry("x/Q.md", "---\ntags: [quest]\ncompleted: true\nledger-status: bogus\nledger-reward: 5 gold\nledger-xp: lots\n---\n*Notice. Reward: 9 gold.*\n");
-  assert.deepEqual(e.fields, { title: "Q", status: "completed", reward: "5 gold" });
-  assert.deepEqual(e.soft, { summary: "Notice." });
+  assert.deepEqual(e.fields, { title: "Q", status: "completed", reward: "5 gold", summary: "Notice." });
 });
 
 test("location: type becomes kind; Windows line endings and list-style tags", () => {
