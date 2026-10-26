@@ -1048,6 +1048,34 @@
     if (x.cur.vaultNote !== r.note) ch.push("link to vault note");
     return ch;
   }
+  // Run locally with `node dev-server.js`, the ledger reads the vault named by VAULT_DIR in .env.local straight from disk,
+  // so there's no folder to pick. Only the notes, and the images they embed, are fetched.
+  var localVault = null; // null: not checked yet; false: no local vault; otherwise its index { name, files }
+  function checkLocalVault() {
+    if (localVault !== null) return;
+    localVault = false;
+    fetch("__vault/index", { cache: "no-store" }).then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (ix) { if (ix && ix.files) { localVault = ix; renderSync(); } }, function () {});
+  }
+  function readLocalVault() {
+    setStatus("Reading the vault…");
+    var ix;
+    function get(p) {
+      return fetch("__vault/file?path=" + encodeURIComponent(p), { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error(p); return r.blob(); })
+        .then(function (b) { var f = new File([b], p.split("/").pop(), { type: b.type }); Object.defineProperty(f, "webkitRelativePath", { value: ix.name + "/" + p }); return f; });
+    }
+    fetch("__vault/index", { cache: "no-store" }).then(function (r) { if (!r.ok) throw new Error("index"); return r.json(); }).then(function (x) {
+      ix = localVault = x;
+      return Promise.all(x.files.filter(function (p) { return /\.md$/i.test(p); }).map(get)).then(function (notes) {
+        return Promise.all(notes.map(function (f) { return f.text(); })).then(function (texts) {
+          var wanted = {};
+          texts.forEach(function (t) { t.replace(/[^\/\\\[\]()|#\n]+\.(?:png|jpe?g|webp|gif)/gi, function (m) { wanted[m.trim().replace(/%20/g, " ").toLowerCase()] = true; return m; }); });
+          var images = x.files.filter(function (p) { return !/\.md$/i.test(p) && wanted[p.split("/").pop().toLowerCase()]; });
+          return Promise.all(images.map(get)).then(function (imgs) { return notes.concat(imgs); });
+        });
+      });
+    }).then(readVault, function () { setStatus("Couldn't read the vault. Check VAULT_DIR in .env.local, and that node dev-server.js is running."); });
+  }
   function readVault(files) {
     var all = [].slice.call(files || []);
     var mds = all.filter(function (f) { var p = f.webkitRelativePath || f.name; return /\.md$/i.test(p) && !/(^|\/)(\.[^\/]*|templates?)\//i.test(p); });
@@ -1169,10 +1197,16 @@
     box.appendChild(el("summary", { text: "Sync from Obsidian" }));
     var wrap = el("div", { cls: "gm-form" });
     box.appendChild(wrap);
-    wrap.appendChild(el("p", { cls: "section-intro", text: "Pick your vault folder to add or update quests, characters, player characters and locations from notes tagged quest, character, player-character or location, and the timeline from session recaps tagged recap. The ledger then matches the vault: anything with no note there is removed (reveals, pins and logs are kept for everything else). Nothing changes until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
+    wrap.appendChild(el("p", { cls: "section-intro", text: "Read your vault (or pick its folder) to add or update quests, characters, player characters and locations from notes tagged quest, character, player-character or location, and the timeline from session recaps tagged recap. The ledger then matches the vault: anything with no note there is removed (reveals, pins and logs are kept for everything else). Nothing changes until you apply. Only player-safe parts are read: frontmatter (including a character's tagline), a quest's board notice, a \"Player summary\" section, and ledger-name / ledger-role / ledger-summary style overrides." }));
     var pick = el("input", { type: "file", id: "vaultPick", "aria-label": "Obsidian vault folder", onchange: function () { readVault(pick.files); } });
     pick.setAttribute("webkitdirectory", ""); pick.multiple = true;
     if (SYNCED.some(function (k) { return !loaded[k]; })) pick.disabled = true;
+    checkLocalVault();
+    if (localVault) {
+      var rd = el("button", { cls: "btn", type: "button", text: "Read the vault (" + localVault.name + ")", onclick: readLocalVault });
+      rd.disabled = sync.busy || pick.disabled;
+      wrap.appendChild(el("div", { cls: "row" }, [rd, el("span", { cls: "status-line", text: "from VAULT_DIR in .env.local, or pick a folder below" })]));
+    }
     wrap.appendChild(pick);
     if (!sync.rows.length && !sync.skipped.length) return;
     box.open = true;
