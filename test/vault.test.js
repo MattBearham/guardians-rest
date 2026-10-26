@@ -153,13 +153,20 @@ test("recap: party moments, one heading per character, linked or plain", () => {
     "## For the GM", "- not a moment"
   ].join("\n"));
   assert.deepEqual(e.fields.party, [
-    { who: "Naia Thalassira", events: [
+    { who: ["Naia Thalassira"], events: [
       { text: "Talked a baby crab into coming along, and named him Mr. Snippy.", links: [], tag: "funny" },
       { text: "Asked Roz about the town.", links: ["Roselynn Brightwater"] }] },
-    { who: "Torren", events: [{ text: "Front-flipped onto the pier.", links: [], tag: "impact" }] }
+    { who: ["Torren"], events: [{ text: "Front-flipped onto the pier.", links: [], tag: "impact" }] }
   ]);
   assert.equal(e.fields.events.length, 1);
   assert.equal(entry("x/R.md", "---\ntags: [recap]\n---\n## Timeline\n- A.\n").fields.party, undefined);
+});
+
+test("recap: a heading naming several characters holds the moments they shared", () => {
+  const party = h => entry("x/R.md", ["---", "tags: [recap]", "---", "## Timeline", "- A.", "## Party moments", h, "- **Funny:** The flute went overboard."].join("\n")).fields.party[0].who;
+  assert.deepEqual(party("### [[Barnaby Bramblewick|Barnaby]], [[Naia Thalassira|Naia]] and [[Torren Cloudstep|Torren]]"), ["Barnaby Bramblewick", "Naia Thalassira", "Torren Cloudstep"]);
+  assert.deepEqual(party("### Torren & [[Breadstick]]"), ["Breadstick", "Torren"]);
+  assert.deepEqual(party("### Maren, Breadstick and Torren"), ["Maren", "Breadstick", "Torren"]);
 });
 
 test("session plans (tag session) are not recaps", () => {

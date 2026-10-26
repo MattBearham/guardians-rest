@@ -71,16 +71,22 @@
       return { text: plain(s), links: links };
     }).filter(function (e) { return e.text; });
   }
-  // "### [[Naia Thalassira|Naia]]" (or plain "### Torren") then bullets: `who` is the link target, or the heading text.
+  // "### [[Naia Thalassira|Naia]]" (or plain "### Torren") then bullets: `who` lists the characters, by link target or name.
+  // A heading naming several ("### [[Barnaby Bramblewick|Barnaby]], [[Naia Thalassira|Naia]] and Torren") holds moments they shared.
   // A bullet that starts "**Quote:**", "**Funny:**" or "**Impact:**" gets that `tag`, and loses the label from its text.
   var MOMENT_TAG = /^(quote|funny|impact)\s*:\s*/i;
+  function headingNames(h) {
+    var names = [], rest = h.replace(/\[\[([^\]|#]*)[^\]]*\]\]/g, function (m, t) { if (t.trim()) names.push(t.trim()); return ","; });
+    plain(rest).split(/\s*(?:,|&|\band\b)\s*/i).forEach(function (n) { if (n.trim()) names.push(n.trim()); });
+    return names;
+  }
   function partyMoments(raw) {
     var out = [], cur = null;
     raw.split("\n").forEach(function (line) {
       var h = /^#{3,6}\s+(.*?)\s*$/.exec(line);
       if (h) {
-        var link = /\[\[([^\]|#]*)/.exec(h[1]), who = (link ? link[1] : plain(h[1])).trim();
-        cur = who ? { who: who, lines: [] } : null; if (cur) out.push(cur);
+        var who = headingNames(h[1]);
+        cur = who.length ? { who: who, lines: [] } : null; if (cur) out.push(cur);
       } else if (cur) cur.lines.push(line);
     });
     return out.map(function (p) {

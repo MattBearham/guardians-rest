@@ -300,7 +300,7 @@
     det.appendChild(el("h3", { text: "MOMENTS" + (ms.length ? " · " + ms.length : "") }));
     if (!ms.length) det.appendChild(el("p", { cls: "known", text: "No moments recorded yet. They're added from each session's recap." }));
     else det.appendChild(el("ul", { cls: "log" }, ms.map(function (x) {
-      var hs = eventLinks(x.m);
+      var hs = (x.m.shared || []).map(function (pc) { return { kind: "players", item: pc }; }).concat(eventLinks(x.m));
       return el("li", null, [el("span", { cls: "ses", text: x.m.session ? "SESSION " + x.m.session : "EARLIER" }), el("div", null, [
         x.m.tag ? el("span", { cls: "moment-tag t-" + x.m.tag, text: x.m.tag.toUpperCase() }) : null,
         el("p", { text: x.m.text || "" }),
@@ -347,10 +347,17 @@
         eventLinks(e).forEach(function (h) { (moments[h.item.id] = moments[h.item.id] || []).push({ session: s.d.session, text: e.text }); });
       });
       (s.d.party || []).forEach(function (p) {
-        var pc = pcOf(p.who);
-        if (!pc) { pc = { id: "pc:" + String(p.who).toLowerCase(), d: { name: p.who, revealed: true }, extra: true }; pcIndex[String(p.who).toLowerCase()] = pc; pcExtra.push(pc); }
+        // A moment several characters shared is filed under each of them, and shows the others.
+        var group = whoOf(p).map(function (who) {
+          var pc = pcOf(who);
+          if (!pc) { pc = { id: "pc:" + String(who).toLowerCase(), d: { name: who, revealed: true }, extra: true }; pcIndex[String(who).toLowerCase()] = pc; pcExtra.push(pc); }
+          return pc;
+        });
         (p.events || []).forEach(function (e) {
-          (partyLog[pc.id] = partyLog[pc.id] || []).push({ session: s.d.session, text: e.text, links: e.links, tag: e.tag });
+          group.forEach(function (pc) {
+            (partyLog[pc.id] = partyLog[pc.id] || []).push({ session: s.d.session, text: e.text, links: e.links, tag: e.tag,
+              shared: group.filter(function (o) { return o !== pc; }) });
+          });
           // Someone a party moment links counts it among their interactions too.
           eventLinks(e).forEach(function (h) { (moments[h.item.id] = moments[h.item.id] || []).push({ session: s.d.session, text: e.text }); });
         });
@@ -358,6 +365,7 @@
     });
   }
   function pcOf(who) { return pcIndex[String(who || "").trim().toLowerCase()] || null; }
+  function whoOf(p) { return [].concat(p.who || []).filter(Boolean); } // one name in recaps synced before shared moments
   function party() { return visible(state.players).concat(pcExtra).sort(byOrder); }
   function eventLinks(e) {
     var out = [], seen = {};
@@ -370,7 +378,7 @@
     function add(h) { if (h && !seen[h.item.id]) { seen[h.item.id] = true; out.push(h); } }
     (s.d.events || []).forEach(function (e) { eventLinks(e).forEach(add); });
     (s.d.party || []).forEach(function (p) {
-      var pc = pcOf(p.who); if (pc) add({ kind: "players", item: pc });
+      whoOf(p).forEach(function (who) { var pc = pcOf(who); if (pc) add({ kind: "players", item: pc }); });
       (p.events || []).forEach(function (e) { eventLinks(e).forEach(add); });
     });
     return out;

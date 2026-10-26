@@ -62,12 +62,14 @@ Aim for about 8 to 20 moments for a three-hour session. Merge small beats into o
 Separately, each player character gets their standout moments: the ones their player will still be talking about sessions from now. **The GM chooses these, not you.** You find the candidates, and the GM picks which to keep, one character at a time. The aim is 1 or 2 per character per session. Ordinary play, such as attacking, casting a spell or chatting with an NPC, is not a candidate, however well it went.
 
 1. **Find the candidates.** For each character who was at the session, shortlist their 3 or 4 best candidates from the whole transcript, each written and tagged exactly as it would appear in the recap. If a character has fewer good ones, offer fewer. Don't pad the list.
+
+   Some moments belong to several characters at once, such as Barnaby commanding Torren to throw his flute overboard and Naia fishing it out. Write a moment like that once, as a **shared** moment, rather than as a separate version for each character. Offer it in the question for the first character it involves, and start its description with who it's shared with ("Shared with Naia and Torren: …"). If the GM keeps it, it counts towards each of those characters' 1 or 2, and you don't offer it again in the later questions.
 2. **Ask the GM, player by player.** Ask about one character at a time with AskUserQuestion, waiting for each answer before asking about the next. Use one multi-select question, such as "Which of Torren's moments should go in the Session 2 recap?". Each option is one candidate:
    - **label:** the type and a few words, such as "Funny: the backflips"
    - **description:** the full moment, as you'd write it in the recap
 
    Order the options strongest first, and add "(Recommended)" to the one or two you'd keep. The GM can also choose "Other" to write their own moment or reword one. If they pick nothing, that character gets no party moments this session.
-3. **Write only what the GM chose,** with any rewording they gave, under that character's heading. Apply the player-safe rules in section 4 to anything they write in.
+3. **Write only what the GM chose,** with any rewording they gave, under that character's heading, or a shared moment under its characters' shared heading. Apply the player-safe rules in section 4 to anything they write in.
 
 Tag every candidate with one of three types:
 
@@ -121,6 +123,10 @@ date: <YYYY-MM-DD, if the GM or the transcript gives it; otherwise leave this li
 - **Funny:** Backflipped at every opportunity: three times for the interview, badly on a moving deck, and with a front flip onto the pier to introduce himself to [[Marina Sealegs Finch|Marina]].
 - **Impact:** Cast the deciding vote for the net loft as the guild's home.
 
+### [[Barnaby Bramblewick|Barnaby]], [[Naia Thalassira|Naia]] and [[Torren Cloudstep|Torren]]
+
+- **Funny:** Barnaby heard Torren's flute from the prayer room and commanded him to throw it overboard. Torren picked Barnaby up in protest until Naia raised the flute out of the sea in a bubble of water.
+
 ## For the GM
 
 <Not imported into the ledger. List names you couldn't match, new NPCs or places who have no vault note yet (as plain text, with a line about each), and anything you were unsure of, quoting the transcript line.>
@@ -136,10 +142,11 @@ Rules for the Timeline list, because the ledger reads it:
 Rules for the Party moments section:
 
 - One `### ` heading per player character, then their moments as top-level `- ` bullets, in the order things happened.
+- After the individual headings, one `### ` heading for each group of characters who shared moments, naming them all: `### [[Barnaby Bramblewick|Barnaby]], [[Naia Thalassira|Naia]] and [[Torren Cloudstep|Torren]]`. Separate the names with commas or "and". Each moment under it shows on every one of their pages. Don't repeat a shared moment under a character's own heading.
 - Start every bullet with its type in bold: `**Quote:**`, `**Funny:**` or `**Impact:**`. The ledger reads the type from there and shows it as a label.
 - Make the heading a link to the character's note when they have one, using the exact file name: `### [[Naia Thalassira|Naia]]`. For a character with no note yet, write their name as plain text (`### Torren`), spelled the same way in every recap, and mention it under "For the GM". The ledger files each moment under the character by that heading.
 - Inside a moment, link the people, places and quests involved, as in the Timeline: the moment then also shows in that person's Interactions. Don't link player characters inside a moment.
-- Leave out a character who wasn't at the session, or who the GM gave no moments, rather than giving them an empty heading.
+- Leave out a character who wasn't at the session, or who the GM gave no moments of their own, rather than giving them an empty heading.
 
 If the recap file already exists, show the GM what would change and ask before you overwrite it. Don't edit any other vault note. If a new NPC needs a note, suggest it under "For the GM".
 
