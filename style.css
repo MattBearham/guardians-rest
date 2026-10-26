@@ -109,6 +109,7 @@ img.mono { display: block; object-fit: cover; object-position: center 20%; backg
 /* player profiles: full portrait beside the name and counts, then moments as a feed of posts */
 .pc-head { display: grid; grid-template-columns: minmax(200px, 340px) minmax(0, 1fr); gap: 20px; align-items: start; }
 .pc-portrait { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); }
+.pc-head.no-portrait { grid-template-columns: 180px minmax(0, 1fr); }
 .pc-portrait.empty { aspect-ratio: 1; max-width: 180px; display: grid; place-items: center; font: 400 96px/1 var(--f-display); color: var(--accent-ink); background: var(--accent); border: 0; }
 .pc-info { display: grid; gap: 6px; align-content: start; min-width: 0; }
 .pc-info h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.05; }
@@ -131,7 +132,7 @@ img.mono { display: block; object-fit: cover; object-position: center 20%; backg
 .pc-post blockquote { margin: 0; font: italic 400 clamp(20px, 3vw, 24px)/1.3 var(--f-display); overflow-wrap: anywhere; }
 .pc-post .links { margin-top: 0; }
 @media (max-width: 560px) {
-  .pc-head { grid-template-columns: 1fr; }
+  .pc-head, .pc-head.no-portrait { grid-template-columns: 1fr; }
   .pc-portrait { max-width: 400px; margin: 0 auto; }
   .pc-portrait.empty { max-width: 200px; width: 100%; }
 }
