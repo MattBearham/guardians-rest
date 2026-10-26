@@ -302,6 +302,7 @@
     else det.appendChild(el("ul", { cls: "log" }, ms.map(function (x) {
       var hs = eventLinks(x.m);
       return el("li", null, [el("span", { cls: "ses", text: x.m.session ? "SESSION " + x.m.session : "EARLIER" }), el("div", null, [
+        x.m.tag ? el("span", { cls: "moment-tag t-" + x.m.tag, text: x.m.tag.toUpperCase() }) : null,
         el("p", { text: x.m.text || "" }),
         hs.length ? el("div", { cls: "links" }, hs.map(function (h) {
           return el("button", { type: "button", cls: "link-chip k-" + h.kind, text: nameOf(h.item), "aria-label": "Open " + KIND_LABEL[h.kind].toLowerCase() + ": " + nameOf(h.item), onclick: function () { openEntry(h); } });
@@ -349,7 +350,7 @@
         var pc = pcOf(p.who);
         if (!pc) { pc = { id: "pc:" + String(p.who).toLowerCase(), d: { name: p.who, revealed: true }, extra: true }; pcIndex[String(p.who).toLowerCase()] = pc; pcExtra.push(pc); }
         (p.events || []).forEach(function (e) {
-          (partyLog[pc.id] = partyLog[pc.id] || []).push({ session: s.d.session, text: e.text, links: e.links });
+          (partyLog[pc.id] = partyLog[pc.id] || []).push({ session: s.d.session, text: e.text, links: e.links, tag: e.tag });
           // Someone a party moment links counts it among their interactions too.
           eventLinks(e).forEach(function (h) { (moments[h.item.id] = moments[h.item.id] || []).push({ session: s.d.session, text: e.text }); });
         });

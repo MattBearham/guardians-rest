@@ -72,6 +72,8 @@
     }).filter(function (e) { return e.text; });
   }
   // "### [[Naia Thalassira|Naia]]" (or plain "### Torren") then bullets: `who` is the link target, or the heading text.
+  // A bullet that starts "**Quote:**", "**Funny:**" or "**Impact:**" gets that `tag`, and loses the label from its text.
+  var MOMENT_TAG = /^(quote|funny|impact)\s*:\s*/i;
   function partyMoments(raw) {
     var out = [], cur = null;
     raw.split("\n").forEach(function (line) {
@@ -81,7 +83,13 @@
         cur = who ? { who: who, lines: [] } : null; if (cur) out.push(cur);
       } else if (cur) cur.lines.push(line);
     });
-    return out.map(function (p) { return { who: p.who, events: timelineEvents(p.lines.join("\n")) }; }).filter(function (p) { return p.events.length; });
+    return out.map(function (p) {
+      return { who: p.who, events: timelineEvents(p.lines.join("\n")).map(function (e) {
+        var t = MOMENT_TAG.exec(e.text);
+        if (t) { e.tag = t[1].toLowerCase(); e.text = e.text.slice(t[0].length); }
+        return e;
+      }).filter(function (e) { return e.text; }) };
+    }).filter(function (p) { return p.events.length; });
   }
   function vaultEntry(path, text, kinds) {
     var n = parseNote(text), fm = n.fm, body = n.body;

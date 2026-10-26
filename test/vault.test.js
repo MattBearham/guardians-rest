@@ -146,17 +146,17 @@ test("recap: party moments, one heading per character, linked or plain", () => {
     "---", "tags: [recap]", "session: 1", "---",
     "## Timeline", "", "- The party arrived.", "",
     "## Party moments", "",
-    "### [[Naia Thalassira|Naia]]", "", "- Talked a baby crab into coming along, and named him Mr. Snippy.",
+    "### [[Naia Thalassira|Naia]]", "", "- **Funny:** Talked a baby crab into coming along, and named him Mr. Snippy.",
     "- Asked [[Roselynn Brightwater|Roz]] about", "  the town. ![[naia.png]]", "",
-    "### Torren", "- Front-flipped onto the pier.", "",
+    "### Torren", "- IMPACT: Front-flipped onto the pier.", "",
     "### Breadstick", "", "Nothing this time.", "",
     "## For the GM", "- not a moment"
   ].join("\n"));
   assert.deepEqual(e.fields.party, [
     { who: "Naia Thalassira", events: [
-      { text: "Talked a baby crab into coming along, and named him Mr. Snippy.", links: [] },
+      { text: "Talked a baby crab into coming along, and named him Mr. Snippy.", links: [], tag: "funny" },
       { text: "Asked Roz about the town.", links: ["Roselynn Brightwater"] }] },
-    { who: "Torren", events: [{ text: "Front-flipped onto the pier.", links: [] }] }
+    { who: "Torren", events: [{ text: "Front-flipped onto the pier.", links: [], tag: "impact" }] }
   ]);
   assert.equal(e.fields.events.length, 1);
   assert.equal(entry("x/R.md", "---\ntags: [recap]\n---\n## Timeline\n- A.\n").fields.party, undefined);

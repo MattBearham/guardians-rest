@@ -102,6 +102,10 @@ img.mono { display: block; object-fit: cover; object-position: center 20%; backg
 .log .ses { font: 700 12px/1.6 var(--f-label); letter-spacing: .06em; color: var(--sea); font-variant-numeric: tabular-nums; }
 .log p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .log .del { margin-top: 6px; }
+.moment-tag { display: inline-block; font: 700 11px/1 var(--f-label); letter-spacing: .08em; color: var(--ink); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 3px; padding: 4px 7px; margin-bottom: 6px; }
+.moment-tag.t-quote { border-left-color: var(--sea); }
+.moment-tag.t-funny { border-left-color: var(--accent); }
+.moment-tag.t-impact { border-left-color: var(--kelp); }
 .back-btn { display: none; justify-self: start; }
 .search { margin-bottom: 12px; }
 @media (max-width: 720px) {

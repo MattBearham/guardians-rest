@@ -59,14 +59,15 @@ Aim for about 8 to 20 moments for a three-hour session. Merge small beats into o
 
 ### Party moments
 
-Separately, pick out each player character's own moments: the things their player will want to remember about *their* character. Look for:
+Separately, pick out each player character's standout moments: the ones their player will still be talking about sessions from now. Be very selective. **Pick 1 or 2 per character per session.** Go to 3 only when a character truly dominated the session, and give a character none if nothing of theirs stood out. Ordinary play, such as attacking, casting a spell or chatting with an NPC, is not a party moment, however well it went.
 
-- **interactions:** a memorable exchange with an NPC (a deal, a joke that landed, a promise, an insult, winning someone over or putting them off), or with another party member (a squabble, a rescue, a team-up)
-- **character moments:** something that showed who they are: a choice they made, a fear, a belief, a habit, a bit of backstory they revealed at the table
-- **big plays:** a decisive action in a fight or a scene, a clutch save, a spectacular failure, the deciding vote
-- **firsts and lasts:** the first time they used a signature trick, or anything they gained, lost or swore
+Tag every moment with one of three types:
 
-Aim for about 2 to 5 per character for a three-hour session, and give every character who was there at least one if you can. Prefer what they did and said in character over dice results. A character's moment may overlap with a Timeline moment, but tell it from their side and add the detail that makes it theirs, rather than copying the Timeline line.
+- **Quote:** a line that sums up the character, or that the table laughed at or repeated. Quote it as closely as the transcript allows, then add a few words of context. Example: Breadstick explaining where Hovel is: "Hovel is all around us, really."
+- **Funny:** a bit the table loved, especially a running gag. Example: Torren backflipping at every opportunity, from the interview to the pier.
+- **Impact:** something the character did that changed how a scene or the session went. Examples: the deciding vote, a clutch save, a choice that turned a fight.
+
+To choose, ask: would this player bring it up next session? Prefer a running gag over a one-off joke, and a line the table reacted to over a line nobody noticed. If a moment fits two types, pick the stronger. A character's moment may overlap with a Timeline moment, but tell it from their side, rather than copying the Timeline line.
 
 ## 4. Keep it player-safe
 
@@ -101,15 +102,14 @@ date: <YYYY-MM-DD, if the GM or the transcript gives it; otherwise leave this li
 
 ## Party moments
 
-### [[Naia Thalassira|Naia]]
+### [[Breadstick]]
 
-- Talked a baby crab into coming with the party, then held him at knifepoint to keep his giant family back, and named him Mr. Snippy.
-- ...
+- **Quote:** "Hovel is all around us, really." Explaining that his home is part underground, part by the sea, part forest and part desert, all joined by tunnels.
 
-### Torren
+### [[Torren Cloudstep|Torren]]
 
-- Went straight back to punching the sea after the fight, which won [[Agatha]] over completely.
-- ...
+- **Funny:** Backflipped at every opportunity: three times for the interview, badly on a moving deck, and with a front flip onto the pier to introduce himself to [[Marina Sealegs Finch|Marina]].
+- **Impact:** Cast the deciding vote for the net loft as the guild's home.
 
 ## For the GM
 
@@ -126,9 +126,10 @@ Rules for the Timeline list, because the ledger reads it:
 Rules for the Party moments section:
 
 - One `### ` heading per player character, then their moments as top-level `- ` bullets, in the order things happened.
+- Start every bullet with its type in bold: `**Quote:**`, `**Funny:**` or `**Impact:**`. The ledger reads the type from there and shows it as a label.
 - Make the heading a link to the character's note when they have one, using the exact file name: `### [[Naia Thalassira|Naia]]`. For a character with no note yet, write their name as plain text (`### Torren`), spelled the same way in every recap, and mention it under "For the GM". The ledger files each moment under the character by that heading.
 - Inside a moment, link the people, places and quests involved, as in the Timeline: the moment then also shows in that person's Interactions. Don't link player characters inside a moment.
-- Leave out a character who wasn't at the session, rather than giving them an empty heading.
+- Leave out a character who wasn't at the session, or who had no standout moment, rather than giving them an empty heading.
 
 If the recap file already exists, show the GM what would change and ask before you overwrite it. Don't edit any other vault note. If a new NPC needs a note, suggest it under "For the GM".
 
@@ -136,6 +137,6 @@ If the recap file already exists, show the GM what would change and ask before y
 
 Tell the GM:
 
-- where you wrote the note, how many timeline moments it has, and how many party moments for each character
+- where you wrote the note, how many timeline moments it has, and each character's party moments with their types
 - anything under "For the GM" that needs their attention
 - the next step: review the note in Obsidian, then in the ledger open GM view, then **Sync from Obsidian**, pick the vault folder and apply. The session arrives hidden: they can reveal it on the Timeline tab, or tick "Show new entries to players" before applying.
