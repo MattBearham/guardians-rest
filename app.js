@@ -129,6 +129,36 @@
   // Names file under the word after a title ("Captain Puffball" under P), for both the letter and the order.
   function sortName(n) { return String(n || "?").replace(/^(The|Captain|Old Mother|Grandma|Father)\s+/i, ""); }
   function personInitial(n) { return sortName(n).charAt(0).toUpperCase(); }
+  /* ---------- portraits ---------- */
+  // Portraits sit in a private Storage bucket (players can only load revealed people's), so the page
+  // asks for short-lived signed links in batches and redraws People when they arrive.
+  var portraits = {}, portraitsAsked = {}, portraitQueue = [], portraitTimer = null;
+  function portraitSrc(name) {
+    if (!name || !sb) return null;
+    var p = portraits[name];
+    if (p && p.until > Date.now()) return p.url;
+    if (!portraitsAsked[name]) { portraitsAsked[name] = true; portraitQueue.push(name); clearTimeout(portraitTimer); portraitTimer = setTimeout(signPortraits, 30); }
+    return null;
+  }
+  function signPortraits() {
+    var names = portraitQueue.splice(0), ep = epoch;
+    if (!names.length) return;
+    sb.storage.from("portraits").createSignedUrls(names, 6 * 3600).then(function (r) {
+      if (ep !== epoch) return;
+      var got = false;
+      (r.data || []).forEach(function (x) {
+        if (!x.signedUrl) return; // not allowed, or missing: leave it asked so it isn't retried every render
+        portraits[x.path] = { url: x.signedUrl, until: Date.now() + 5 * 3600 * 1000 }; delete portraitsAsked[x.path]; got = true;
+      });
+      if (got) renderPeople();
+    }, function () {});
+  }
+  function avatar(d) {
+    var src = portraitSrc(d.portrait);
+    return src ? el("img", { cls: "mono portrait", src: src, alt: "", "aria-hidden": "true" })
+      : el("span", { cls: "mono", "aria-hidden": "true", text: personInitial(d.name || "?") });
+  }
+
   function lastSeen(p) { var m = 0; (p.d.log || []).concat(moments[p.id] || []).forEach(function (e) { if (Number(e.session) > m) m = Number(e.session); }); return m; }
   function renderPeople() {
     var box = $("people-list"); box.textContent = "";
@@ -149,7 +179,7 @@
       if (L !== letter) { letter = L; lst.appendChild(el("div", { cls: "dir-letter", text: L })); }
       lst.appendChild(el("button", { type: "button", cls: "dir-row" + (d.revealed ? "" : " is-hidden"), "aria-current": current && current.id === p.id ? "true" : "false",
         onclick: function () { selPerson = p.id; explicitSel = true; renderPeople(); var dd = document.querySelector("#people .dir-detail"); if (dd && window.innerWidth <= 720) dd.scrollIntoView({ block: "start" }); } }, [
-        el("span", { cls: "mono", "aria-hidden": "true", text: L }),
+        avatar(d),
         el("span", { cls: "nm", text: n }),
         el("span", { cls: "sub", text: [d.role, seen ? "last seen session " + seen : ""].filter(Boolean).join(" · ") })
       ]));
@@ -160,8 +190,8 @@
     if (current) {
       var d = current.d, n = String(d.name || "?");
       det.appendChild(el("button", { cls: "btn small ghost back-btn", type: "button", text: "← Everyone", onclick: function () { explicitSel = false; renderPeople(); } }));
-      det.appendChild(el("div", { cls: "dir-head" }, [
-        el("div", { cls: "mono", "aria-hidden": "true", text: personInitial(n) }),
+      det.appendChild(el("div", { cls: "dir-head" + (portraitSrc(d.portrait) ? " has-portrait" : "") }, [
+        avatar(d),
         el("h2", { text: n }),
         d.role ? el("div", { cls: "role", text: d.role }) : null,
         d.where ? el("div", { cls: "where", text: "Found: " + d.where }) : null
@@ -845,6 +875,9 @@
 
   var sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false, keep: {} };
   function nameOf(it) { return String(it.d.title || it.d.name || ""); }
+  // An entry is up for matching by name if it never came from the vault, or if its note is no longer in the
+  // picked folder (the note was renamed), so a rename updates the entry instead of replacing it.
+  function unlinked(it) { return !it.d.vaultNote || !sync.rows.some(function (r) { return r.note.toLowerCase() === String(it.d.vaultNote).toLowerCase(); }); }
   function matchRows() {
     var claimed = {};
     sync.rows.forEach(function (r) {
@@ -855,7 +888,7 @@
     sync.rows.forEach(function (r) {
       if (r.match) return;
       var nm = (r.fields.title || r.fields.name).toLowerCase();
-      var free = state[r.kind].filter(function (it) { return !it.d.vaultNote && !claimed[it.id] && nameOf(it); });
+      var free = state[r.kind].filter(function (it) { return unlinked(it) && !claimed[it.id] && nameOf(it); });
       var hits = free.filter(function (it) { return nameOf(it).toLowerCase() === nm; });
       if (hits.length !== 1) hits = free.filter(function (it) { var a = nameOf(it).toLowerCase(); return nm.indexOf(a) >= 0 || a.indexOf(nm) >= 0; });
       if (hits.length === 1) { r.match = hits[0].id; r.guess = true; claimed[hits[0].id] = true; }
@@ -892,9 +925,21 @@
         if (seen[key]) { sync.skipped.push({ path: path, why: "same note name as " + seen[key] }); return; }
         seen[key] = path; e.on = true; sync.rows.push(e);
       });
-      matchRows(); setStatus(""); renderSync();
-      $("vault-sync").scrollIntoView({ block: "start", behavior: "smooth" });
-    }, function () { setStatus("Couldn't read those notes. Try picking the folder again."); });
+      var images = {}; sync.missing = [];
+      all.forEach(function (f) { if (/\.(png|jpe?g|webp|gif)$/i.test(f.name)) images[f.name.toLowerCase()] = f; });
+      var preps = sync.rows.filter(function (r) { return r.image; }).map(function (r) {
+        var file = images[r.image.toLowerCase()];
+        if (!file) { sync.missing.push(r.note + " (" + r.image + ")"); return null; }
+        return prepPortrait(file, r.note).then(function (p) { r.fields.portrait = p.name; r.portraitBlob = p.blob; },
+          function () { sync.missing.push(r.note + " (" + r.image + ", couldn't be read)"); });
+      }).filter(Boolean);
+      if (preps.length) setStatus("Preparing " + preps.length + (preps.length === 1 ? " portrait…" : " portraits…"));
+      return Promise.all(preps).then(function () {
+        if (ep !== epoch) return;
+        matchRows(); setStatus(""); renderSync();
+        $("vault-sync").scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+    }).catch(function () { setStatus("Couldn't read those notes. Try picking the folder again."); });
   }
   // The vault is the source of truth: an entry no vault note matches is deleted, but only for types the picked
   // folder has notes for, so picking just the Quests folder can't wipe people, places or the timeline.
@@ -906,36 +951,74 @@
     SYNCED.forEach(function (k) { if (kinds[k]) state[k].forEach(function (it) { if (!matched[it.id]) out.push({ kind: k, item: it }); }); });
     return out;
   }
+  // Portraits are shrunk in the browser to PORTRAIT_PX on their long side, and named after the note plus a
+  // fingerprint of the image, so an unchanged portrait keeps its name (and isn't uploaded again).
+  var PORTRAIT_PX = 400;
+  function prepPortrait(file, note) {
+    return createImageBitmap(file).then(function (bmp) {
+      var k = Math.min(1, PORTRAIT_PX / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
+      c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+      return new Promise(function (ok) { c.toBlob(ok, "image/webp", 0.85); });
+    }).then(function (blob) {
+      if (!blob) throw new Error("couldn't shrink the image");
+      return blob.arrayBuffer().then(function (buf) { return crypto.subtle.digest("SHA-256", buf); }).then(function (h) {
+        var hex = Array.prototype.slice.call(new Uint8Array(h), 0, 5).map(function (b) { return ("0" + b.toString(16)).slice(-2); }).join("");
+        var ext = blob.type === "image/webp" ? "webp" : blob.type === "image/jpeg" ? "jpg" : "png";
+        var slug = note.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "person";
+        return { name: slug + "-" + hex + "." + ext, blob: blob };
+      });
+    });
+  }
+  // Upload the portraits that changed before saving the people that use them; a failed upload keeps the old one.
+  function uploadPortraits(todo) {
+    var ups = todo.filter(function (r) { var c = rowData(r).cur; return r.portraitBlob && r.fields.portrait && (!c || c.portrait !== r.fields.portrait); });
+    return Promise.all(ups.map(function (r) {
+      return sb.storage.from("portraits").upload(r.fields.portrait, r.portraitBlob, { contentType: r.portraitBlob.type, upsert: true }).then(function (res) {
+        if (res.error) throw res.error;
+      }).then(function () { return 0; }, function () { delete r.fields.portrait; return 1; });
+    })).then(function (fails) { return fails.reduce(function (a, b) { return a + b; }, 0); });
+  }
   function applySync() {
     var todo = sync.rows.filter(function (r) { var ch = rowChanges(r); return r.on && (!ch || ch.length); });
     var gone = staleEntries().filter(function (x) { return !sync.keep[x.item.id]; });
     if ((!todo.length && !gone.length) || sync.busy) return;
     sync.busy = true; renderSync(); setStatus("Syncing from Obsidian…");
-    var ep = epoch, inserts = [], jobs = [];
-    function job(type, n, p) { jobs.push({ type: type, n: n, p: p }); }
-    todo.forEach(function (r) {
-      var x = rowData(r);
-      var base = x.cur || Object.assign(r.kind === "quests" ? { status: "available" } : {}, { order: 999, revealed: sync.reveal });
-      var data = Object.assign({}, base, x.fields, { vaultNote: r.note });
-      if (x.cur) job("updated", 1, sb.from("docs").update({ data: data }).eq("collection", r.kind).eq("id", r.match).select("id").then(function (res) {
-        if (res.error) throw codeErr(res.error); if (!res.data || !res.data.length) throw { code: "invalid_argument" };
-      }));
-      else inserts.push({ collection: r.kind, id: newId(), data: data });
-    });
-    if (inserts.length) job("added", inserts.length, sb.from("docs").insert(inserts).select("id").then(function (res) { if (res.error) throw codeErr(res.error); }));
-    SYNCED.forEach(function (k) {
-      var ids = gone.filter(function (x) { return x.kind === k; }).map(function (x) { return x.item.id; });
-      if (ids.length) job("removed", ids.length, sb.from("docs").delete().eq("collection", k).in("id", ids).select("id").then(function (res) {
-        if (res.error) throw codeErr(res.error); if ((res.data || []).length !== ids.length) throw { code: "invalid_argument" };
-      }));
-    });
-    Promise.allSettled(jobs.map(function (j) { return j.p; })).then(function (rs) {
-      if (ep !== epoch) return;
-      var done = { added: 0, updated: 0, removed: 0 }, failed = 0;
-      rs.forEach(function (r, i) { if (r.status === "fulfilled") done[jobs[i].type] += jobs[i].n; else failed++; });
-      return Promise.all(SYNCED.map(refetch)).then(function () {
-        sync.busy = false; sync.keep = {}; matchRows(); render();
-        setStatus("Synced from Obsidian: " + done.added + " added, " + done.updated + " updated, " + done.removed + " removed." + (failed ? " Some changes didn't save; try again." : ""));
+    var ep = epoch, inserts = [], jobs = [], oldPortraits = [];
+    todo.forEach(function (r) { var c = rowData(r).cur; if (c && c.portrait && r.fields.portrait && c.portrait !== r.fields.portrait) oldPortraits.push(c.portrait); });
+    gone.forEach(function (x) { if (x.item.d.portrait) oldPortraits.push(x.item.d.portrait); });
+    uploadPortraits(todo).then(function (portraitFails) {
+      function job(type, n, p) { jobs.push({ type: type, n: n, p: p }); }
+      todo.forEach(function (r) {
+        var x = rowData(r);
+        var base = x.cur || Object.assign(r.kind === "quests" ? { status: "available" } : {}, { order: 999, revealed: sync.reveal });
+        var data = Object.assign({}, base, x.fields, { vaultNote: r.note });
+        if (x.cur) job("updated", 1, sb.from("docs").update({ data: data }).eq("collection", r.kind).eq("id", r.match).select("id").then(function (res) {
+          if (res.error) throw codeErr(res.error); if (!res.data || !res.data.length) throw { code: "invalid_argument" };
+        }));
+        else inserts.push({ collection: r.kind, id: newId(), data: data });
+      });
+      if (inserts.length) job("added", inserts.length, sb.from("docs").insert(inserts).select("id").then(function (res) { if (res.error) throw codeErr(res.error); }));
+      SYNCED.forEach(function (k) {
+        var ids = gone.filter(function (x) { return x.kind === k; }).map(function (x) { return x.item.id; });
+        if (ids.length) job("removed", ids.length, sb.from("docs").delete().eq("collection", k).in("id", ids).select("id").then(function (res) {
+          if (res.error) throw codeErr(res.error); if ((res.data || []).length !== ids.length) throw { code: "invalid_argument" };
+        }));
+      });
+      return Promise.allSettled(jobs.map(function (j) { return j.p; })).then(function (rs) {
+        if (ep !== epoch) return;
+        var done = { added: 0, updated: 0, removed: 0 }, failed = 0;
+        rs.forEach(function (r, i) { if (r.status === "fulfilled") done[jobs[i].type] += jobs[i].n; else failed++; });
+        return Promise.all(SYNCED.map(refetch)).then(function () {
+          // Tidy away replaced or removed portraits that nobody uses any more (best effort).
+          var inUse = {}; state.people.forEach(function (p) { if (p.d.portrait) inUse[p.d.portrait] = true; });
+          var unused = oldPortraits.filter(function (n) { return !inUse[n]; });
+          if (unused.length) sb.storage.from("portraits").remove(unused).then(function () {}, function () {});
+          sync.busy = false; sync.keep = {}; matchRows(); render();
+          setStatus("Synced from Obsidian: " + done.added + " added, " + done.updated + " updated, " + done.removed + " removed." +
+            (portraitFails ? " " + portraitFails + (portraitFails === 1 ? " portrait" : " portraits") + " didn't upload; check the portraits SQL has been run." : "") +
+            (failed ? " Some changes didn't save; try again." : ""));
+        });
       });
     }).catch(function () { sync.busy = false; renderSync(); setStatus("The sync didn't finish. Try again in a moment."); });
   }
@@ -969,7 +1052,7 @@
         var sel = el("select", { "aria-label": "Link " + r.note + " to an existing entry" });
         sel.appendChild(el("option", { value: "", text: "Add as a new entry" }));
         var taken = {}; sync.rows.forEach(function (o) { if (o !== r && o.match) taken[o.match] = true; });
-        state[r.kind].filter(function (it) { return !it.d.vaultNote && !taken[it.id]; }).sort(function (a, b) { return nameOf(a).localeCompare(nameOf(b)); }).forEach(function (it) {
+        state[r.kind].filter(function (it) { return unlinked(it) && !taken[it.id]; }).sort(function (a, b) { return nameOf(a).localeCompare(nameOf(b)); }).forEach(function (it) {
           var o = el("option", { value: it.id, text: "Update \"" + (nameOf(it) || "Untitled") + "\"" }); if (it.id === r.match) o.selected = true; sel.appendChild(o);
         });
         sel.disabled = sync.busy;
@@ -1015,6 +1098,7 @@
     var untouched = SYNCED.filter(function (k) { return !kinds[k]; }).map(function (k) { return NAMES[k]; });
     if (untouched.length) wrap.appendChild(el("p", { cls: "status-line", text: "No notes for " + untouched.join(", ") + " in this folder, so those are left as they are." }));
     if (sync.ignored) wrap.appendChild(el("p", { cls: "status-line", text: sync.ignored + " other notes (lore, sessions, handouts and so on) were ignored." }));
+    if (sync.missing && sync.missing.length) wrap.appendChild(el("p", { cls: "status-line", text: "Portraits not found in this folder: " + sync.missing.join(", ") + ". Pick a folder that includes the images." }));
 
     var rev = el("input", { type: "checkbox", id: "syncReveal" }); rev.checked = sync.reveal; rev.disabled = sync.busy;
     rev.addEventListener("change", function () { sync.reveal = rev.checked; renderSync(); });
@@ -1207,6 +1291,7 @@
     $("gmToggleWrap").hidden = true; $("gmToggle").checked = false;
     ["quests", "people", "places"].forEach(function (k) { $("form-" + k).textContent = ""; });
     sync = { rows: [], skipped: [], ignored: 0, busy: false, reveal: false, keep: {} }; $("vault-sync").textContent = "";
+    portraits = {}; portraitsAsked = {}; portraitQueue = []; clearTimeout(portraitTimer);
     setStatus(""); render();
     showLogin(msg);
   }

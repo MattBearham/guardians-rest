@@ -23,6 +23,15 @@ test("character: tagline, location and player summary, nothing from GM sections"
   });
 });
 
+test("character: the first embedded image is the portrait; other kinds have none", () => {
+  const image = (file, body) => entry(file, "---\ntags: [character]\n---\n" + body).image;
+  assert.equal(image("Characters/Agatha Windham.md", "*Pronounced*\n\n## Player summary\nWild.\n\n![[agatha-portrait.png]]\n\n![[second.png]]"), "agatha-portrait.png");
+  assert.equal(image("Characters/X.md", "![[portraits/My Face.JPG|338]]"), "My Face.JPG");
+  assert.equal(image("Characters/X.md", "![face](portraits/face%20one.webp)"), "face one.webp");
+  assert.equal(image("Characters/X.md", "No picture yet. [[agatha-portrait.png]] is a link, not an embed."), "");
+  assert.equal(entry("Locations/Pier.md", "---\ntags: [location]\n---\n![[pier.png]]").image, "");
+});
+
 test("quest: frontmatter, giver, and the board notice split into summary and reward", () => {
   const e = entry("Quests/Assistant Wanted.md", [
     "---", "tags: [quest]", "quest-giver:", '  - "[[Margaret Grandma Yew]]"', "completed: false", "order: 5", "xp: 300", "---",

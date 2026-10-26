@@ -75,7 +75,7 @@
     var kind = typeof fm.ledger === "string" ? VAULT_KINDS[fm.ledger.toLowerCase()] : null;
     if (!kind) [].concat(fm.tags || fm.tag || []).some(function (t) { return (kind = VAULT_KINDS[String(t).replace(/^#/, "").toLowerCase()] || null); });
     if (!kind) return null;
-    var f = {}, soft = {};
+    var f = {}, soft = {}, image = "";
     function first(v) { return plain([].concat(v || [])[0]); }
     if (kind === "quests") {
       f.title = note;
@@ -100,6 +100,10 @@
       f.name = note;
       if (kind === "people" && first(fm.location)) f.where = first(fm.location);
       if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
+      // A character's portrait is the first image embedded in the note; the sync uploads that file.
+      var embed = kind === "people" && (/!\[\[([^\]|#]+?\.(?:png|jpe?g|webp|gif))(?:[|#][^\]]*)?\]\]/i.exec(body) ||
+        /!\[[^\]]*\]\(<?([^)>]+?\.(?:png|jpe?g|webp|gif))>?\)/i.exec(body));
+      if (embed) image = embed[1].trim().split("/").pop().replace(/%20/g, " ");
       if (kind === "places" && (first(fm.tagline) || first(fm.type))) f.kind = first(fm.tagline) || first(fm.type);
     }
     var known = sectionText(body, /^(player summary|what the party knows)$/i);
@@ -116,7 +120,7 @@
     });
     // part-of names the parent note: follow the link target, not its display alias.
     var parent = String([].concat(fm["part-of"] || [])[0] || ""), link = /\[\[([^\]|#]*)/.exec(parent);
-    return { kind: kind, note: note, path: path, fields: f, soft: soft, partOf: kind === "places" ? (link ? link[1] : plain(parent)).trim().toLowerCase() : "" };
+    return { kind: kind, note: note, path: path, fields: f, soft: soft, image: image, partOf: kind === "places" ? (link ? link[1] : plain(parent)).trim().toLowerCase() : "" };
   }
   // Which map each place goes on: follow its part-of chain up to the town (local) or the island (world).
   // Places that reach neither, or that set ledger-map, are left as they are (world unless ledger-map says town).

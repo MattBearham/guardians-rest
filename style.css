@@ -89,6 +89,9 @@ section[hidden] { display: none !important; }
 .dir-detail { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 20px 22px; display: grid; gap: 14px; min-width: 0; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
 .dir-head { display: grid; grid-template-columns: 64px 1fr; gap: 4px 16px; align-items: center; }
 .dir-head .mono { grid-row: span 3; width: 64px; height: 64px; font-size: 32px; }
+img.mono { display: block; object-fit: cover; object-position: center 20%; background: var(--card); }
+.dir-head.has-portrait { grid-template-columns: 112px 1fr; }
+.dir-head.has-portrait .mono { width: 112px; height: 112px; }
 .dir-head h2 { font-size: clamp(26px, 4vw, 32px); line-height: 1.1; }
 .dir-head .role { font-style: italic; color: var(--muted); }
 .dir-head .where { font-size: 14px; color: var(--muted); }
