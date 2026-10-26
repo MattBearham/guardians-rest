@@ -1,12 +1,12 @@
 ---
 name: session-recap
-description: Turn a speech-to-text transcript of a played Guardian's Rest session into a session recap note in the Obsidian vault, with a player summary and a timeline of the major moments, linked to the vault's character, location and quest notes so the ledger's Sync from Obsidian can import it. Use when the GM gives a session transcript, or asks for a recap or timeline of a session.
+description: Turn a speech-to-text transcript of a played Guardian's Rest session into a session recap note in the Obsidian vault, with a player summary, a timeline of the major moments, and each player character's own memorable moments and interactions, linked to the vault's character, location and quest notes so the ledger's Sync from Obsidian can import it. Use when the GM gives a session transcript, or asks for a recap or timeline of a session.
 argument-hint: <transcript file> [session number]
 ---
 
 # Session recap from a transcript
 
-The GM gives you a transcript of a session that has been played. You write one recap note into the vault. The GM reviews it in Obsidian, then imports it with **Sync from Obsidian** in the ledger, where it shows up on the Timeline tab and in each linked person's Interactions.
+The GM gives you a transcript of a session that has been played. You write one recap note into the vault. The GM reviews it in Obsidian, then imports it with **Sync from Obsidian** in the ledger, where it shows up on the Timeline tab, in each linked person's Interactions, and on each player character's page in The party tab.
 
 **Vault:** `C:/Users/Matth/Desktop/The Spire/Mountport` (use a different path if the GM gives one).
 
@@ -14,7 +14,7 @@ The GM gives you a transcript of a session that has been played. You write one r
 
 1. **The transcript**, from the path the GM gave. If they didn't give one, ask. Read the whole thing, even if it's long: read it in chunks rather than skimming.
 2. **The session number.** Take it from the GM, the transcript's file name, or the session plan. If none of these gives it, ask. Don't guess.
-3. **The names in the vault.** List the note file names in `Characters/`, `Locations/` and `Quests/`, including subfolders. These are the only names you may link. For each character, read the frontmatter `tagline` and the `## Player summary`: that's usually enough to tell who's who. Open a full note only when you need it to settle who someone is.
+3. **The names in the vault.** List the note file names in `Characters/`, `Locations/` and `Quests/`, including subfolders. These are the only names you may link. Player characters are the notes tagged `player-character` (usually in `Characters/Party/`). For each character, read the frontmatter `tagline` and the `## Player summary`: that's usually enough to tell who's who. Open a full note only when you need it to settle who someone is.
 4. **The session plan**, if there is one (`Sessions/Session <N> - <name>.md`, tagged `session`). Use it to learn the names, places and quest that were *planned*. The recap must describe what *actually happened* in the transcript, which often differs from the plan.
 5. **Earlier recaps** (`Sessions/Session <N> - Recap.md`) for continuity, if there are any.
 
@@ -22,7 +22,7 @@ The GM gives you a transcript of a session that has been played. You write one r
 
 Speech-to-text transcripts are messy. Allow for all of this:
 
-- **Speakers are players, not characters.** A label like `Sam:` is a person at the table. Work out which character each player is playing from context, such as the names others call them in play. If you can't tell, refer to "the party" rather than guessing.
+- **Speakers are players, not characters.** A label like `Sam:` is a person at the table. Work out which character each player is playing from context, such as the names others call them in play. If you can't tell, refer to "the party" rather than guessing. Note the mapping: you need it for the party moments.
 - **Names get misheard.** "Marina See legs", "Agatha Wyndham" and "the drown gull" are Marina Sealegs Saltmarsh, Agatha Windham and The Drowned Gull. Match them to the vault names using sound and context. If you can't match a name confidently, don't link it. List it under "For the GM" instead.
 - **Most of it isn't the story.** Leave out rules talk, dice rolls, snack breaks, scheduling and jokes out of character. The GM narrating, or doing an NPC's voice, is where the story is.
 - **Only what happened counts.** Something a player suggested but the party didn't do, or a plan they dropped, is not a moment.
@@ -40,6 +40,17 @@ A moment is something the party will want to remember later. Examples:
 
 Aim for about 8 to 20 moments for a three-hour session. Merge small beats into one moment, and leave out anything trivial.
 
+### Party moments
+
+Separately, pick out each player character's own moments: the things their player will want to remember about *their* character. Look for:
+
+- **interactions:** a memorable exchange with an NPC (a deal, a joke that landed, a promise, an insult, winning someone over or putting them off), or with another party member (a squabble, a rescue, a team-up)
+- **character moments:** something that showed who they are: a choice they made, a fear, a belief, a habit, a bit of backstory they revealed at the table
+- **big plays:** a decisive action in a fight or a scene, a clutch save, a spectacular failure, the deciding vote
+- **firsts and lasts:** the first time they used a signature trick, or anything they gained, lost or swore
+
+Aim for about 2 to 5 per character for a three-hour session, and give every character who was there at least one if you can. Prefer what they did and said in character over dice results. A character's moment may overlap with a Timeline moment, but tell it from their side and add the detail that makes it theirs, rather than copying the Timeline line.
+
 ## 4. Keep it player-safe
 
 The recap is shown to players. Write only what the party saw, heard or learned at the table.
@@ -47,6 +58,7 @@ The recap is shown to players. Write only what the party saw, heard or learned a
 - **Never** use anything from the vault notes that the party hasn't discovered: GM secrets, backstories, true motives, what's behind a twist. Vault notes are for resolving names, not a source of facts.
 - If an NPC lied to the party, record what they *said* ("Silas swore he'd never been near the wreck"), not the truth.
 - Write in the past tense, from the party's point of view, in plain and vivid language. Use one or two sentences per moment.
+- Party moments follow the same rules. A player's character notes may hold GM-only secrets (a hidden true nature, a backstory the table hasn't heard): only write what came out at the table.
 
 ## 5. Write the note
 
@@ -70,6 +82,18 @@ date: <YYYY-MM-DD, if the GM or the transcript gives it; otherwise leave this li
 - [[Marina Sealegs Saltmarsh|Marina]] welcomed them at [[The Pier]] and revealed the census was one signature short, so [[Census Assistance Required|the census job]] began.
 - ...
 
+## Party moments
+
+### [[Naia Thalassira|Naia]]
+
+- Talked a baby crab into coming with the party, then held him at knifepoint to keep his giant family back, and named him Mr. Snippy.
+- ...
+
+### Torren
+
+- Went straight back to punching the sea after the fight, which won [[Agatha]] over completely.
+- ...
+
 ## For the GM
 
 <Not imported into the ledger. List names you couldn't match, new NPCs or places who have no vault note yet (as plain text, with a line about each), and anything you were unsure of, quoting the transcript line.>
@@ -82,12 +106,19 @@ Rules for the Timeline list, because the ledger reads it:
 - Don't link player characters, or names that have no vault note. Write those as plain text.
 - Don't embed images, and don't link lore, session or handout notes.
 
+Rules for the Party moments section:
+
+- One `### ` heading per player character, then their moments as top-level `- ` bullets, in the order things happened.
+- Make the heading a link to the character's note when they have one, using the exact file name: `### [[Naia Thalassira|Naia]]`. For a character with no note yet, write their name as plain text (`### Torren`), spelled the same way in every recap, and mention it under "For the GM". The ledger files each moment under the character by that heading.
+- Inside a moment, link the people, places and quests involved, as in the Timeline: the moment then also shows in that person's Interactions. Don't link player characters inside a moment.
+- Leave out a character who wasn't at the session, rather than giving them an empty heading.
+
 If the recap file already exists, show the GM what would change and ask before you overwrite it. Don't edit any other vault note. If a new NPC needs a note, suggest it under "For the GM".
 
 ## 6. Hand back
 
 Tell the GM:
 
-- where you wrote the note, and how many moments it has
+- where you wrote the note, how many timeline moments it has, and how many party moments for each character
 - anything under "For the GM" that needs their attention
 - the next step: review the note in Obsidian, then in the ledger open GM view, then **Sync from Obsidian**, pick the vault folder and apply. The session arrives hidden: they can reveal it on the Timeline tab, or tick "Show new entries to players" before applying.

@@ -212,6 +212,7 @@ img.mono { display: block; object-fit: cover; object-position: center 20%; backg
 .link-chip.k-people { border-left-color: var(--accent); }
 .link-chip.k-places { border-left-color: var(--sea); }
 .link-chip.k-quests { border-left-color: var(--kelp); }
+.link-chip.k-players { border-left-color: var(--ink); }
 .tl-btn { justify-self: start; }
 
 /* notes */

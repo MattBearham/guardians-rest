@@ -9,6 +9,9 @@
     people: { label: "person", fields: [
       ["name", "Name", "text"], ["role", "Who they are", "text"], ["where", "Where to find them", "text"],
       ["order", "Order", "number"], ["summary", "What the party knows", "area"]] },
+    players: { label: "player character", fields: [
+      ["name", "Name", "text"], ["role", "Tagline", "text"], ["player", "Played by", "text"],
+      ["order", "Order", "number"], ["summary", "About them", "area"]] },
     places: { label: "place", fields: [
       ["name", "Name", "text"], ["kind", "Tagline", "text"], ["map", "Map", "select", ["town", "world"]], ["order", "Order", "number"],
       ["summary", "What the party knows", "area"]] }

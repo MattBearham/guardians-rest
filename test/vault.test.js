@@ -132,6 +132,36 @@ test("recap: falls back to 'Session N' for the title; no bullets means skip", ()
   assert.deepEqual(entry("x/R.md", "---\ntags: [recap]\nsession: 4\n---\n## Timeline\n\nTBD\n"), { skip: "recap has no bullets under ## Timeline" });
 });
 
+test("player character: player-character beats character; tagline, player and summary, nothing from GM sections", () => {
+  const e = entry("Mountport/Characters/Party/Naia Thalassira.md", [
+    "---", "tags: [character, player-character]", 'location: "[[Guardian\'s Rest]]"', 'tagline: "Mermaid druid with a secret"', "player: Sophie", "---",
+    "## Player summary", "", "A cheerful young sea elf druid.", "", "## Overview", "", "**Really:** a mermaid"
+  ].join("\n"));
+  assert.equal(e.kind, "players");
+  assert.deepEqual(e.fields, { name: "Naia Thalassira", role: "Mermaid druid with a secret", player: "Sophie", summary: "A cheerful young sea elf druid." });
+});
+
+test("recap: party moments, one heading per character, linked or plain", () => {
+  const e = entry("Sessions/Session 1 - Recap.md", [
+    "---", "tags: [recap]", "session: 1", "---",
+    "## Timeline", "", "- The party arrived.", "",
+    "## Party moments", "",
+    "### [[Naia Thalassira|Naia]]", "", "- Talked a baby crab into coming along, and named him Mr. Snippy.",
+    "- Asked [[Roselynn Brightwater|Roz]] about", "  the town. ![[naia.png]]", "",
+    "### Torren", "- Front-flipped onto the pier.", "",
+    "### Breadstick", "", "Nothing this time.", "",
+    "## For the GM", "- not a moment"
+  ].join("\n"));
+  assert.deepEqual(e.fields.party, [
+    { who: "Naia Thalassira", events: [
+      { text: "Talked a baby crab into coming along, and named him Mr. Snippy.", links: [] },
+      { text: "Asked Roz about the town.", links: ["Roselynn Brightwater"] }] },
+    { who: "Torren", events: [{ text: "Front-flipped onto the pier.", links: [] }] }
+  ]);
+  assert.equal(e.fields.events.length, 1);
+  assert.equal(entry("x/R.md", "---\ntags: [recap]\n---\n## Timeline\n- A.\n").fields.party, undefined);
+});
+
 test("session plans (tag session) are not recaps", () => {
   assert.equal(entry("Sessions/Session 1 - Plan.md", "---\ntags: [session]\nsession: 1\n---\n## Timeline\n- planned beat\n"), null);
 });
@@ -146,7 +176,7 @@ test("every tagged note in VAULT_DIR parses", { skip: !vaultDir && "set VAULT_DI
       if (fs.statSync(p).isDirectory()) walk(p); else if (/\.md$/i.test(f)) files.push(p);
     }
   })(vaultDir);
-  const counts = { quests: 0, people: 0, places: 0, timeline: 0 };
+  const counts = { quests: 0, people: 0, places: 0, players: 0, timeline: 0 };
   for (const p of files) {
     const e = entry(p.split(path.sep).join("/"), fs.readFileSync(p, "utf8"));
     if (!e || e.skip) continue;
@@ -158,5 +188,5 @@ test("every tagged note in VAULT_DIR parses", { skip: !vaultDir && "set VAULT_DI
     }
   }
   console.log("Vault notes:", counts);
-  assert.ok(counts.quests + counts.people + counts.places + counts.timeline > 0, "no tagged notes found");
+  assert.ok(Object.values(counts).some(Boolean), "no tagged notes found");
 });
