@@ -198,16 +198,17 @@ section[hidden] { display: none !important; }
 .session > h2::before { content: ""; position: absolute; left: -30px; top: .3em; width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 3px solid var(--accent); box-sizing: border-box; }
 .session > h2 .label { font-size: 12px; }
 .session.is-hidden { border-style: none; }
-.tl-summary { margin: 0; color: var(--muted); font-style: italic; max-width: 68ch; }
-.moments { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.moments li { background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 12px 16px; min-width: 0; }
-.moments p { margin: 0; max-width: 68ch; overflow-wrap: anywhere; }
+.tl-summary { margin: 0; max-width: 68ch; }
+.tl-groups { display: grid; gap: 10px; background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 12px 16px; }
+.tl-group { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 4px 12px; align-items: baseline; }
+.tl-group .links { margin-top: 0; }
+.link-chip.on { background: var(--ink); color: var(--paper); }
+@media (max-width: 560px) { .tl-group { grid-template-columns: 1fr; } }
 .links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .link-chip { font: 700 12px/1 var(--f-label); letter-spacing: .05em; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-left: 4px solid var(--muted); border-radius: 3px; padding: 6px 9px; cursor: pointer; }
 .link-chip.k-people { border-left-color: var(--accent); }
 .link-chip.k-places { border-left-color: var(--sea); }
 .link-chip.k-quests { border-left-color: var(--kelp); }
-.link-chip[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .tl-btn { justify-self: start; }
 
 /* notes */

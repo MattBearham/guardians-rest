@@ -237,9 +237,10 @@
     return out;
   }
   function timelineButton(id) {
-    var n = (moments[id] || []).length;
+    var seen = {}; (moments[id] || []).forEach(function (m) { seen[m.session] = true; });
+    var n = Object.keys(seen).length;
     if (!n) return null;
-    return el("button", { cls: "btn small ghost tl-btn", type: "button", text: "On the timeline · " + n,
+    return el("button", { cls: "btn small ghost tl-btn", type: "button", text: "On the timeline · " + n + (n === 1 ? " session" : " sessions"),
       onclick: function () { tlFilter = id; showTab("timeline"); render(); window.scrollTo(0, 0); } });
   }
   function openEntry(h) {
@@ -268,30 +269,27 @@
       sel.appendChild(og);
     });
     sel.addEventListener("change", function () { tlFilter = sel.value || null; renderTimeline(); });
-    var bar = el("div", { cls: "tl-bar" }, [el("label", { cls: "label", "for": "tlFilter", text: "SHOW MOMENTS WITH" }), sel]);
+    var bar = el("div", { cls: "tl-bar" }, [el("label", { cls: "label", "for": "tlFilter", text: "SHOW SESSIONS WITH" }), sel]);
     if (tlFilter) bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: "Open " + nameOf(refs[tlFilter].item), onclick: function () { openEntry(refs[tlFilter]); } }));
     box.appendChild(bar);
 
+    // One node per session: its summary, then everyone, everywhere and every quest its recap links.
     list.forEach(function (s) {
-      var d = s.d;
-      var evs = (d.events || []).filter(function (e) { return !tlFilter || eventLinks(e).some(function (h) { return h.item.id === tlFilter; }); });
-      if (tlFilter && !evs.length) return;
-      var ol = el("ol", { cls: "moments" });
-      evs.forEach(function (e) {
-        var links = eventLinks(e);
-        ol.appendChild(el("li", null, [el("p", { text: e.text }),
-          links.length ? el("div", { cls: "links" }, links.map(function (h) {
-            var on = h.item.id === tlFilter;
-            return el("button", { type: "button", cls: "link-chip k-" + h.kind, "aria-pressed": on ? "true" : "false", "aria-label": KIND_LABEL[h.kind] + ": " + nameOf(h.item),
-              title: on ? "Show everything" : "Show only moments with " + nameOf(h.item), text: nameOf(h.item),
-              onclick: function () { tlFilter = on ? null : h.item.id; renderTimeline(); } });
-          })) : null]));
+      var d = s.d, met = {}, byKind = { people: [], places: [], quests: [] };
+      (d.events || []).forEach(function (e) { eventLinks(e).forEach(function (h) { if (!met[h.item.id]) { met[h.item.id] = true; byKind[h.kind].push(h); } }); });
+      if (tlFilter && !met[tlFilter]) return;
+      var groups = [["people", "PEOPLE"], ["places", "PLACES"], ["quests", "QUESTS"]].filter(function (g) { return byKind[g[0]].length; }).map(function (g) {
+        return el("div", { cls: "tl-group" }, [el("span", { cls: "label", text: g[1] }), el("div", { cls: "links" }, byKind[g[0]].map(function (h) {
+          return el("button", { type: "button", cls: "link-chip k-" + h.kind + (h.item.id === tlFilter ? " on" : ""), text: nameOf(h.item),
+            "aria-label": "Open " + KIND_LABEL[h.kind].toLowerCase() + ": " + nameOf(h.item), onclick: function () { openEntry(h); } });
+        }))]);
       });
       var heading = d.session ? "Session " + d.session : "Session";
       box.appendChild(el("article", { cls: "session" + (d.revealed ? "" : " is-hidden") }, [
         el("h2", null, [document.createTextNode(heading + " "), d.title && d.title !== heading ? el("span", { cls: "label", text: String(d.title).toUpperCase() }) : null]),
-        !tlFilter && d.summary ? el("p", { cls: "tl-summary", text: d.summary }) : null,
-        ol, gmBar("timeline", s)
+        d.summary ? el("p", { cls: "tl-summary", text: d.summary }) : null,
+        groups.length ? el("div", { cls: "tl-groups" }, groups) : null,
+        gmBar("timeline", s)
       ]));
     });
   }
