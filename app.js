@@ -280,34 +280,49 @@
     });
     dir.appendChild(lst);
 
-    var d = current.d, name = String(d.name || "?");
-    var det = el("article", { cls: "dir-detail" }, [
+    // A profile page: the portrait at full size (uncropped) beside who they are and a few counts, then their moments as a feed.
+    var d = current.d, name = String(d.name || "?"), src = portraitSrc(d.portrait);
+    var ms = (partyLog[current.id] || []).map(function (m, i) { return { m: m, i: i }; })
+      .sort(function (a, b) { return (Number(b.m.session) || 0) - (Number(a.m.session) || 0) || a.i - b.i; });
+    var seen = {}; ms.forEach(function (x) { if (x.m.session) seen[x.m.session] = true; });
+    var sess = Object.keys(seen).map(Number).sort(function (a, b) { return a - b; });
+    function stat(n, label) { return el("li", null, [el("b", { text: String(n) }), el("span", { text: label })]); }
+    var det = el("article", { cls: "dir-detail pc-profile" }, [
       el("button", { cls: "btn small ghost back-btn", type: "button", text: "← The party", onclick: function () { explicitPlayer = false; renderPlayers(); } }),
-      el("div", { cls: "dir-head" + (portraitSrc(d.portrait) ? " has-portrait" : "") }, [
-        avatar(d),
-        el("h2", { text: name }),
-        d.role ? el("div", { cls: "role", text: d.role }) : null,
-        d.player ? el("div", { cls: "where", text: "Played by " + d.player }) : null
+      el("header", { cls: "pc-head" + (src ? "" : " no-portrait") }, [
+        src ? el("img", { cls: "pc-portrait", src: src, alt: "Portrait of " + name })
+          : el("div", { cls: "pc-portrait empty", "aria-hidden": "true", text: personInitial(name) }),
+        el("div", { cls: "pc-info" }, [
+          el("h2", { text: name }),
+          d.role ? el("div", { cls: "role", text: d.role }) : null,
+          d.player ? el("div", { cls: "where", text: "Played by " + d.player }) : null,
+          el("ul", { cls: "pc-stats" }, [
+            stat(ms.length, ms.length === 1 ? "moment" : "moments"),
+            stat(sess.length, sess.length === 1 ? "session" : "sessions"),
+            sess.length ? stat(sess[0], "first session") : null
+          ]),
+          timelineButton(current.id)
+        ])
       ])
     ]);
-    var tb = timelineButton(current.id); if (tb) det.appendChild(tb);
     if (d.summary || !current.extra) {
       det.appendChild(el("h3", { text: "ABOUT" }));
       det.appendChild(el("p", { cls: "known", text: d.summary || "Nothing written yet." }));
     }
-    var ms = (partyLog[current.id] || []).map(function (m, i) { return { m: m, i: i }; })
-      .sort(function (a, b) { return (Number(b.m.session) || 0) - (Number(a.m.session) || 0) || a.i - b.i; });
     det.appendChild(el("h3", { text: "MOMENTS" + (ms.length ? " · " + ms.length : "") }));
     if (!ms.length) det.appendChild(el("p", { cls: "known", text: "No moments recorded yet. They're added from each session's recap." }));
-    else det.appendChild(el("ul", { cls: "log" }, ms.map(function (x) {
+    else det.appendChild(el("div", { cls: "pc-feed" }, ms.map(function (x) {
       var hs = (x.m.shared || []).map(function (pc) { return { kind: "players", item: pc }; }).concat(eventLinks(x.m));
-      return el("li", null, [el("span", { cls: "ses", text: x.m.session ? "SESSION " + x.m.session : "EARLIER" }), el("div", null, [
-        x.m.tag ? el("span", { cls: "moment-tag t-" + x.m.tag, text: x.m.tag.toUpperCase() }) : null,
-        el("p", { text: x.m.text || "" }),
+      return el("article", { cls: "pc-post" + (x.m.tag ? " t-" + x.m.tag : "") }, [
+        el("div", { cls: "pc-post-head" }, [
+          x.m.tag ? el("span", { cls: "moment-tag t-" + x.m.tag, text: x.m.tag.toUpperCase() }) : null,
+          el("span", { cls: "ses", text: x.m.session ? "SESSION " + x.m.session : "EARLIER" })
+        ]),
+        el(x.m.tag === "quote" ? "blockquote" : "p", { text: x.m.text || "" }),
         hs.length ? el("div", { cls: "links" }, hs.map(function (h) {
           return el("button", { type: "button", cls: "link-chip k-" + h.kind, text: nameOf(h.item), "aria-label": "Open " + KIND_LABEL[h.kind].toLowerCase() + ": " + nameOf(h.item), onclick: function () { openEntry(h); } });
         })) : null
-      ])]);
+      ]);
     })));
     if (gm && current.extra) {
       det.appendChild(el("div", { cls: "gm-panel" }, [el("div", { cls: "label", text: "GM: NO CHARACTER NOTE" }),
@@ -1079,7 +1094,7 @@
   }
   // Portraits are shrunk in the browser to PORTRAIT_PX on their long side, and named after the note plus a
   // fingerprint of the image, so an unchanged portrait keeps its name (and isn't uploaded again).
-  var PORTRAIT_PX = 400;
+  var PORTRAIT_PX = 800;
   function prepPortrait(file, note) {
     return createImageBitmap(file).then(function (bmp) {
       var k = Math.min(1, PORTRAIT_PX / Math.max(bmp.width, bmp.height)), c = document.createElement("canvas");
