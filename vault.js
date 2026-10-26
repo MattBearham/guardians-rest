@@ -99,7 +99,7 @@
       f.name = note;
       if (kind === "people" && first(fm.location)) f.where = first(fm.location);
       if (kind === "people" && first(fm.tagline)) f.role = first(fm.tagline);
-      if (kind === "places" && first(fm.type)) f.kind = first(fm.type);
+      if (kind === "places" && (first(fm.tagline) || first(fm.type))) f.kind = first(fm.tagline) || first(fm.type);
     }
     var known = sectionText(body, /^(player summary|what the party knows)$/i);
     if (known) f.summary = known;

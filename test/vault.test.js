@@ -46,6 +46,13 @@ test("location: type becomes kind; Windows line endings and list-style tags", ()
   assert.deepEqual(e.fields, { name: "The Capital", kind: "city" });
 });
 
+test("location: tagline is the subheading, ahead of type", () => {
+  const place = fm => entry("Locations/Gull Point Lighthouse.md", ["---", "tags: [location]"].concat(fm, ["---", ""]).join(String.fromCharCode(10))).fields.kind;
+  assert.equal(place(["type: lighthouse", 'tagline: "The light that guides boats home"']), "The light that guides boats home");
+  assert.equal(place(["type: lighthouse"]), "lighthouse");
+  assert.equal(place([]), undefined);
+});
+
 test("location: part-of chain decides the map: Guardian's Rest is local, Toruun is the island", () => {
   const place = (name, partOf, extra) => entry("Locations/" + name + ".md",
     ["---", "tags: [location]"].concat(partOf ? ['part-of: "' + partOf + '"'] : [], extra || [], ["---", ""]).join(String.fromCharCode(10)));

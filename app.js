@@ -418,8 +418,8 @@
     var d = current.d, name = String(d.name || "Unnamed place");
     det.appendChild(el("button", { cls: "btn small ghost back-btn", type: "button", text: "← All places", onclick: function () { explicitPlace = false; render(); } }));
     det.appendChild(el("div", { cls: "place-head" }, [
-      d.kind ? el("div", { cls: "label", text: String(d.kind).toUpperCase() }) : null,
       el("h2", { text: name }),
+      d.kind ? el("div", { cls: "role", text: d.kind }) : null,
       gm && typeof d.x !== "number" ? el("div", { cls: "label", text: "NOT ON THE MAP YET" }) : null
     ]));
     det.appendChild(el("h3", { text: "WHAT WE KNOW" }));

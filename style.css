@@ -131,6 +131,7 @@ section[hidden] { display: none !important; }
 .pin-mono { background: var(--sea); color: var(--card); }
 .place-head { display: grid; gap: 4px; }
 .place-head h2 { font-size: clamp(26px, 4vw, 32px); line-height: 1.1; }
+.place-head .role { font-style: italic; color: var(--muted); }
 @media (max-width: 860px) {
   .place-dir { grid-template-columns: minmax(0, 1fr); }
   .place-dir.has-sel .place-find { display: none; }
