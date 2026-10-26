@@ -122,12 +122,14 @@
   }
 
   var selPerson = null, explicitSel = false, peopleQuery = "";
-  function personInitial(n) { return String(n || "?").replace(/^(The|Captain|Old Mother|Grandma|Father)\s+/i, "").charAt(0).toUpperCase(); }
+  // Names file under the word after a title ("Captain Puffball" under P), for both the letter and the order.
+  function sortName(n) { return String(n || "?").replace(/^(The|Captain|Old Mother|Grandma|Father)\s+/i, ""); }
+  function personInitial(n) { return sortName(n).charAt(0).toUpperCase(); }
   function lastSeen(p) { var m = 0; (p.d.log || []).concat(moments[p.id] || []).forEach(function (e) { if (Number(e.session) > m) m = Number(e.session); }); return m; }
   function renderPeople() {
     var box = $("people-list"); box.textContent = "";
     if (!loaded.people) { box.appendChild(el("div", { cls: "empty", text: "Opening the ledger…" })); return; }
-    var all = visible(state.people).slice().sort(function (a, b) { return String(a.d.name || "").localeCompare(String(b.d.name || "")); });
+    var all = visible(state.people).slice().sort(function (a, b) { return sortName(a.d.name).localeCompare(sortName(b.d.name)) || String(a.d.name || "").localeCompare(String(b.d.name || "")); });
     if (!all.length) { box.appendChild(el("div", { cls: "empty", text: "You haven't met anyone yet. New faces will appear here as you meet them." })); return; }
     var q = peopleQuery.trim().toLowerCase();
     var list = !q ? all : all.filter(function (p) { return [p.d.name, p.d.role, p.d.where, p.d.summary].join(" ").toLowerCase().indexOf(q) >= 0; });
