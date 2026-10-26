@@ -6,7 +6,7 @@
   var loaded = { quests: false, people: false, places: false, timeline: false, notes: false, improvements: false, guild: false, picks: false, members: false, ballot: false };
   var ballotError = false;
   var COLLECTIONS = ["quests", "people", "places", "timeline", "notes", "improvements", "guild", "picks"];
-  var confirming = null, pickProfiles = {};
+  var confirming = null, confirmingReset = false, voteControlsMissing = false, pickProfiles = {};
   var db = null, sb = null, myId = null, isOwner = false, gm = false;
   var epoch = 0; // bumped on log-out so replies from the old session are ignored
   var editing = { quests: null, people: null, places: null };
@@ -517,6 +517,37 @@
       box.appendChild(lu);
     }
 
+    // The GM can close voting (players lose the ballot; tokens are kept) and reset the open vote's tokens.
+    var closed = guildState().votingClosed === true, waiting = false;
+    for (var lv = 2; lv <= level; lv++) if (!state.picks.some(function (pk) { return pk.id === "level-" + lv; })) waiting = true;
+    if (closed && waiting && !gm) {
+      box.appendChild(el("div", { cls: "levelup" }, [el("b", { text: "VOTING PAUSED" }), document.createTextNode("The guild has levelled up, but the GM has paused the vote on what to build next. It'll reopen soon.")]));
+    }
+    if (gm && (ballot || closed || waiting)) {
+      var vc = el("div", { cls: "gm-panel" }, [el("div", { cls: "label", text: "GM: VOTING" })]);
+      var say = function (t) { vc.appendChild(el("p", { cls: "section-intro", text: t })); };
+      if (voteControlsMissing) say("The voting controls aren't set up in the database yet. Run 4-vote-controls.sql in Supabase's SQL Editor.");
+      else if (closed) {
+        say("Voting is closed. Players can't see the ballot or move tokens. Tokens already placed are kept for when it reopens.");
+        vc.appendChild(el("div", { cls: "row" }, [el("button", { cls: "btn small", type: "button", text: "Reopen voting",
+          onclick: function () { write(db.collection("guild").doc("state").update({ votingClosed: false }), "Voting reopened."); } })]));
+      } else if (ballot && ballot.options.length) {
+        say("The level " + ballot.level + " vote is open: " + ballotVotes.length + " of " + players.length + " tokens placed.");
+        vc.appendChild(el("div", { cls: "row" }, confirmingReset ? [
+          el("span", { text: "Clear all " + ballotVotes.length + (ballotVotes.length === 1 ? " token" : " tokens") + " and start the vote again?" }),
+          el("span", { cls: "row" }, [
+            el("button", { cls: "btn small ghost", type: "button", text: "Cancel", onclick: function () { confirmingReset = false; renderGuild(); } }),
+            el("button", { cls: "btn small danger", type: "button", text: "Clear tokens", onclick: function () { confirmingReset = false; resetVotes(); } })
+          ])
+        ] : [
+          el("button", { cls: "btn small ghost", type: "button", text: "Close voting",
+            onclick: function () { confirmingReset = false; write(db.collection("guild").doc("state").update({ votingClosed: true }), "Voting closed."); } }),
+          ballotVotes.length ? el("button", { cls: "btn small danger", type: "button", text: "Reset tokens", onclick: function () { confirmingReset = true; renderGuild(); } }) : null
+        ]));
+      } else say("There's nothing on the ballot right now.");
+      box.appendChild(vc);
+    }
+
     if (gm) {
       var g = guildState();
       var bonus = el("input", { type: "number", id: "bonusXp", step: "50" }); bonus.value = Number(g.bonusXp) || 0; bonus.style.width = "140px";
@@ -525,7 +556,7 @@
         el("p", { cls: "section-intro", text: "Guild XP is the total of every completed quest's XP, plus this adjustment (use it for side jobs, bonuses or penalties)." }),
         el("div", { cls: "row" }, [bonus, el("button", { cls: "btn small", type: "button", text: "Save adjustment", onclick: function () {
           var v = Number($("bonusXp").value) || 0;
-          write(db.collection("guild").doc("state").set({ bonusXp: v }), "XP adjustment saved.");
+          write(db.collection("guild").doc("state").update({ bonusXp: v }), "XP adjustment saved.");
         } })])
       ]));
     }
@@ -1052,15 +1083,26 @@
   }
   function loadBallot() {
     var ep = epoch;
-    return Promise.all([sb.rpc("ledger_ballot"), sb.from("votes").select("level,user_id,improvement")]).then(function (rs) {
+    return Promise.all([sb.rpc("ledger_ballot"), sb.from("votes").select("level,user_id,improvement"), isOwner ? sb.rpc("ledger_voting_closed") : Promise.resolve({})]).then(function (rs) {
       if (ep !== epoch) return;
       var b = rs[0], v = rs[1];
+      voteControlsMissing = !!rs[2].error;
       ballotError = !!(b.error || v.error);
       var rows = ballotError ? [] : b.data || [];
       state.ballot = rows.length ? { level: rows[0].ballot_level, options: rows.map(function (r) { return r.option_id; }).filter(Boolean) } : null;
       state.votes = ballotError ? [] : v.data || [];
       loaded.ballot = true; render();
     });
+  }
+  function resetVotes() {
+    setStatus("Saving…");
+    return sb.rpc("ledger_reset_votes").then(function (r) {
+      if (r.error) throw r.error;
+      return loadBallot().then(function () {
+        var msg = "Tokens cleared. The vote starts fresh.";
+        setStatus(msg); setTimeout(function () { if ($("status").textContent === msg) setStatus(""); }, 4000);
+      });
+    }).catch(function () { setStatus("The tokens weren't cleared. Try again in a moment."); });
   }
   function vote(choice, okMsg) {
     setStatus("Saving…");
@@ -1152,7 +1194,7 @@
     Object.keys(pending).forEach(function (k) { clearTimeout(pending[k]); pending[k] = null; });
     if (channel) { var ch = channel; channel = null; setTimeout(function () { sb.removeChannel(ch); }, 0); }
     myId = null; db = null; isOwner = false; gm = false; members = [];
-    renaming = false; confirming = null; pinFor = null; activePlace = null; selPerson = null; explicitSel = false;
+    renaming = false; confirming = null; confirmingReset = false; voteControlsMissing = false; pinFor = null; activePlace = null; selPerson = null; explicitSel = false;
     editing = { quests: null, people: null, places: null };
     state = { quests: [], people: [], places: [], timeline: [], notes: [], improvements: [], guild: [], picks: [], ballot: null, votes: [] };
     moments = {}; linkIndex = {}; tlFilter = null; placeQuery = ""; explicitPlace = false; $("placeSearch").value = "";
