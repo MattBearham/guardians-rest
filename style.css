@@ -218,6 +218,7 @@ textarea { min-height: 96px; resize: vertical; }
 .btn { font: 700 14px/1 var(--f-label); letter-spacing: .06em; background: var(--ink); color: var(--paper); border: 0; border-radius: 3px; padding: 11px 16px; cursor: pointer; }
 .btn.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 .btn.small { padding: 7px 10px; font-size: 12px; }
+a.btn { display: inline-block; text-decoration: none; }
 .btn.danger { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
 .btn:disabled { opacity: .5; cursor: default; }
 .note-list { display: grid; gap: 10px; }

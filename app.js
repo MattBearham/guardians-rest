@@ -79,6 +79,10 @@
       sel.style.width = "auto";
       sel.addEventListener("change", function () { write(db.collection("quests").doc(item.id).update({ status: sel.value }), "Status updated."); });
       bar.appendChild(sel);
+      // Synced quests open their note in the GM's Obsidian (Obsidian finds a note by its name anywhere in the vault).
+      var vault = (window.LEDGER_CONFIG || {}).obsidianVault;
+      if (vault && d.vaultNote) bar.appendChild(el("a", { cls: "btn small ghost", text: "Open in Obsidian",
+        href: "obsidian://open?vault=" + encodeURIComponent(vault) + "&file=" + encodeURIComponent(d.vaultNote) }));
     }
     if (kind === "places") {
       bar.appendChild(el("button", { cls: "btn small ghost", type: "button", text: pinFor === item.id ? "Click the chart…" : typeof d.x === "number" ? "Move pin" : "Pin on chart",
